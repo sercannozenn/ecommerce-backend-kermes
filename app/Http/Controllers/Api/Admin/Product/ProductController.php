@@ -38,27 +38,45 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $products = $this->productService->getPaginatedProducts(
-            $request->input('page', 1),
-            $request->input('limit', 10),
-            $request->input('search', ''),
-            $request->input('sortBy', 'created_at'),
-            $request->input('sortOrder', 'desc')
+            $request->query('page', 1),
+            $request->query('limit', 10),
+            $request->query('filter', []),
+            $request->query('sort_by', 'created_at'),
+            $request->query('sort_order', 'desc')
         );
         return $this->success($products);
     }
 
-    public function show(int $id): JsonResponse
+    public function getFiltersData(CategoryService $categoryService, TagService $tagService): JsonResponse
+    {
+        $data = [
+            'categories' => $categoryService->getAll(),
+            'tags'       => $tagService->getAll(),
+        ];
+        return $this->success($data);
+    }
+
+    public function show(int $id, CategoryService $categoryService, TagService $tagService): JsonResponse
     {
         try {
+            $categories = $categoryService->getAll();
+            $tags       = $tagService->getAll();
             $product = $this->productService->getById($id);
-            return $this->success($product);
+            $data       = [
+                'categories' => $categories,
+                'tags'       => $tags,
+                'product'       => $product
+            ];
+            return $this->success($data);
         } catch (Exception $e) {
             return $this->error(404, ['error' => 'Ürün bulunamadı.']);
         }
     }
 
-    public function store(ProductStoreRequest $request): JsonResponse
+//    public function store(ProductStoreRequest $request): JsonResponse
+    public function store(Request $request)
     {
+        return $request->all();
         try {
             $product = $this->productService->store($request->validated());
             return $this->success($product, 201);
@@ -67,13 +85,13 @@ class ProductController extends Controller
         }
     }
 
-    public function update(ProductUpdateRequest $request, Product $product): JsonResponse
+    public function update(ProductUpdateRequest $request, Product $product)
     {
         try {
             $this->productService->setProduct($product)->update($request->validated());
             return $this->success($product);
         } catch (Exception $e) {
-            return $this->error(500, ['error' => 'Ürün güncellenirken bir hata oluştu.']);
+            return $this->error(500, ['error' => 'Ürün güncellenirken bir hata oluştu.', 'message' => $e->getMessage()]);
         }
     }
 

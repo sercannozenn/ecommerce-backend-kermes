@@ -13,7 +13,7 @@ class ProductPrice extends Model
     protected $fillable = [
         'product_id',
         'price',
-        'discount_price',
+        'price_discount',
         'discount_start',
         'discount_end',
         'updated_by'

@@ -19,26 +19,106 @@ class ProductService
         return $this->model->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants'])->get();
     }
 
-    public function getPaginatedProducts($page, $limit, $search, $sortBy, $sortOrder): array
+    public function getPaginatedProducts($page, $limit, $filter, $sortBy, $sortOrder): array
     {
         $query = $this->model::query();
+        $search = $filter['search'] ?? '';
+        $tags = $filter['tags'] ?? [];
+        $categories = $filter['categories'] ?? [];
+        $minPrice = $filter['min_price'] ?? null;
+        $maxPrice = $filter['max_price'] ?? null;
+        $minPriceDiscount = $filter['min_price_discount'] ?? null;
+        $maxPriceDiscount = $filter['max_price_discount'] ?? null;
 
         if (!empty($search)) {
             $query->where('name', 'like', "%{$search}%")
                   ->orWhere('slug', 'like', "%{$search}%")
                   ->orWhere('short_description', 'like', "%{$search}%")
                   ->orWhere('long_description', 'like', "%{$search}%");
+
+            $query->orWhereHas('categories', function ($categoryQuery) use ($search, $categories)
+            {
+                $categoryQuery->where('name', 'like', "%{$search}%")
+                              ->orWhere('description', 'like', "%{$search}%")
+                              ->orWhere('slug', 'like', "%{$search}%");
+            });
+
+            $query->orWhereHas('tags', function ($tagQuery) use ($search, $tags)
+            {
+                $tagQuery->where('name', 'like', "%{$search}%")
+                         ->orWhere('slug', 'like', "%{$search}%");
+            });
+
+            $query->orWhereHas('prices', function ($priceQuery) use ($search)
+            {
+                $priceQuery->where('price', 'like', "%{$search}%")
+                           ->orWhere('price_discount', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($categories))
+        {
+            $query->whereHas('categories', function ($categoryQuery) use ($categories)
+            {
+                $categoryQuery->whereIn('category_id', $categories);
+            });
+        }
+        if (!empty($tags))
+        {
+            $query->whereHas('tags', function ($tagQuery) use ($tags)
+            {
+                $tagQuery->whereIn('tag_id', $tags);
+            });
+        }
+        if (!empty($minPrice))
+        {
+            $query->whereHas('prices', function ($priceQuery) use ($minPrice)
+            {
+                $priceQuery->where('price', '>=', $minPrice);
+            });
+        }
+        if (!empty($maxPrice))
+        {
+            $query->whereHas('prices', function ($priceQuery) use ($maxPrice)
+            {
+                $priceQuery->where('price', '<=', $maxPrice);
+            });
+        }
+        if (!empty($minPriceDiscount))
+        {
+            $query->whereHas('prices', function ($priceQuery) use ($minPriceDiscount)
+            {
+                $priceQuery->where('price_discount', '>=', $minPriceDiscount);
+            });
+        }
+        if (!empty($maxPriceDiscount))
+        {
+            $query->whereHas('prices', function ($priceQuery) use ($maxPriceDiscount)
+            {
+                $priceQuery->where('price_discount', '<=', $maxPriceDiscount);
+            });
         }
 
 
-        if ($sortBy && in_array($sortBy, ['name', 'price', 'created_at'])) {
-            $query->orderBy($sortBy, $sortOrder);
+        if ($sortBy === 'price'){
+            $query->leftJoin('product_prices', function ($join) {
+                $join->on('product_prices.product_id', '=', 'products.id')
+                     ->whereRaw('product_prices.id = (SELECT MAX(id) FROM product_prices WHERE product_prices.product_id = products.id)');
+            });
+            $sortBy = 'product_prices.price';
         }
-
-        $products = $query->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants'])
+        $query->orderBy($sortBy, $sortOrder);
+        \Log::info('$sortBy: ' . $sortBy . ' - sortorder: ' . $sortOrder);
+        $products = $query->select('products.*', DB::raw("DATE_FORMAT(products.created_at, '%d-%m-%Y %H:%i') as formatted_created_at"))
+                          ->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants'])
                           ->paginate($limit, ['*'], 'page', $page);
 
-        return $products->toArray();
+        return [
+            'data'         => $products->items(),
+            'total'        => $products->total(),
+            'current_page' => $products->currentPage(),
+            'last_page'    => $products->lastPage(),
+        ];
     }
 
     public function getById(int $id): Product
@@ -76,9 +156,9 @@ class ProductService
                         \Log::info('Featured Image:', ['getClientOriginalName' => $uploadedFile->getClientOriginalName()]);
 
                         $product->images()->create([
-                            'image_path' => $path,
-                            'is_featured' => $data['featured_image'] === $data['image_ids'][$index]
-                        ]);
+                                                       'image_path'  => $path,
+                                                       'is_featured' => $data['featured_image'] === $data['image_ids'][$index]
+                                                   ]);
                     }
                 }
             }
@@ -116,12 +196,46 @@ class ProductService
                     $lastPrice->price != $data['price'] ||
                     $lastPrice->price_discount != ($data['price_discount'] ?? null)
                 )) {
-
+                \Log::info('İndirimli Fİyat:  ' . $data['price_discount']);
                 $this->model->prices()->create([
                                                    'price'          => $data['price'],
                                                    'price_discount' => $data['price_discount'] ?? null,
                                                    'updated_by'     => auth()->id()
                                                ]);
+            }
+
+            // Silinecek görselleri belirle ve sil
+            if (isset($data['existing_images'])) {
+                $this->model->images()
+                            ->whereNotIn('id', $data['existing_images'])
+                            ->delete();
+            }
+            // Önce tüm görsellerin featured durumunu false yap
+            $this->model->images()->update(['is_featured' => false]);
+
+            // Mevcut görseller arasında featured olanı güncelle
+            if (!empty($data['existing_images']) && $data['featured_image']) {
+                $this->model->images()
+                            ->whereIn('id', $data['existing_images'])
+                            ->where('id', $data['featured_image'])
+                            ->update(['is_featured' => true]);
+            }
+
+            // Resimleri yükle
+            if (!empty($data['images'])) {
+                foreach ($data['images'] as $index => $uploadedFile) {
+                    if ($uploadedFile instanceof \Illuminate\Http\UploadedFile) {
+
+                        $path = $uploadedFile->store('products', 'public');
+                        \Log::info('Featured Image:', ['getClientOriginalName' => $uploadedFile->getClientOriginalName()]);
+                        $isFeatured = $data['featured_image'] === $data['image_ids'][$index];
+
+                        $this->model->images()->create([
+                                                       'image_path'  => $path,
+                                                       'is_featured' => $isFeatured
+                                                   ]);
+                    }
+                }
             }
 
             // Ürün varyantlarını güncelle

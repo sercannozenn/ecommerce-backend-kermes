@@ -24,5 +24,6 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
     Route::put('/category/{id}/change-status', [CategoryController::class, 'changeStatus']);
     Route::resource('product', ProductController::class);
     Route::put('/product/{id}/change-status', [ProductController::class, 'changeStatus']);
+    Route::get('/product/filters-data', [ProductController::class, 'getFiltersData']);
     Route::resource('tag', TagController::class);
 });
