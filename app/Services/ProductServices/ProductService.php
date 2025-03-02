@@ -21,12 +21,13 @@ class ProductService
 
     public function getPaginatedProducts($page, $limit, $filter, $sortBy, $sortOrder): array
     {
-        $query = $this->model::query();
-        $search = $filter['search'] ?? '';
-        $tags = $filter['tags'] ?? [];
-        $categories = $filter['categories'] ?? [];
-        $minPrice = $filter['min_price'] ?? null;
-        $maxPrice = $filter['max_price'] ?? null;
+        $query            = $this->model::query();
+        $search           = $filter['search'] ?? '';
+        $tags             = $filter['tags'] ?? [];
+        $categories       = $filter['categories'] ?? [];
+        $brands           = $filter['brands'] ?? [];
+        $minPrice         = $filter['min_price'] ?? null;
+        $maxPrice         = $filter['max_price'] ?? null;
         $minPriceDiscount = $filter['min_price_discount'] ?? null;
         $maxPriceDiscount = $filter['max_price_discount'] ?? null;
 
@@ -36,14 +37,19 @@ class ProductService
                   ->orWhere('short_description', 'like', "%{$search}%")
                   ->orWhere('long_description', 'like', "%{$search}%");
 
-            $query->orWhereHas('categories', function ($categoryQuery) use ($search, $categories)
+            $query->orWhereHas('categories', function ($categoryQuery) use ($search)
             {
                 $categoryQuery->where('name', 'like', "%{$search}%")
                               ->orWhere('description', 'like', "%{$search}%")
                               ->orWhere('slug', 'like', "%{$search}%");
             });
+            $query->orWhereHas('brand', function ($categoryQuery) use ($search)
+            {
+                $categoryQuery->where('name', 'like', "%{$search}%")
+                              ->orWhere('slug', 'like', "%{$search}%");
+            });
 
-            $query->orWhereHas('tags', function ($tagQuery) use ($search, $tags)
+            $query->orWhereHas('tags', function ($tagQuery) use ($search)
             {
                 $tagQuery->where('name', 'like', "%{$search}%")
                          ->orWhere('slug', 'like', "%{$search}%");
@@ -62,6 +68,10 @@ class ProductService
             {
                 $categoryQuery->whereIn('category_id', $categories);
             });
+        }
+        if (!empty($brands))
+        {
+            $query->whereIn('brand_id', $brands);
         }
         if (!empty($tags))
         {
@@ -110,7 +120,7 @@ class ProductService
         $query->orderBy($sortBy, $sortOrder);
         \Log::info('$sortBy: ' . $sortBy . ' - sortorder: ' . $sortOrder);
         $products = $query->select('products.*', DB::raw("DATE_FORMAT(products.created_at, '%d-%m-%Y %H:%i') as formatted_created_at"))
-                          ->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants'])
+                          ->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants', 'brand'])
                           ->paginate($limit, ['*'], 'page', $page);
 
         return [
@@ -123,7 +133,7 @@ class ProductService
 
     public function getById(int $id): Product
     {
-        return $this->model->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants'])->findOrFail($id);
+        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'discounts', 'images', 'variants'])->findOrFail($id);
     }
 
     /**
@@ -131,8 +141,6 @@ class ProductService
      */
     public function store(array $data): Product
     {
-        \Log::info('Gelen resim verisi:', ['images' => $data['images']]);
-        \Log::info('Featured Image:', ['featured' => $data['featured_image']]);
         DB::beginTransaction();
         try {
             $product = $this->model::create($data);

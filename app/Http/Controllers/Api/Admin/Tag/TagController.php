@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\Admin\Tag;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\Tag\TagStoreRequest;
-use App\Http\Requests\Admin\Tag\TagUpdateRequest;
 use App\Helpers\ResponseFormatter;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Brand\BrandStoreRequest;
+use App\Http\Requests\Admin\Brand\BrandUpdateRequest;
 use App\Services\TagServices\TagService;
-use Illuminate\Http\JsonResponse;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TagController extends Controller
@@ -35,7 +35,7 @@ class TagController extends Controller
         }
     }
 
-    public function store(TagStoreRequest $request): JsonResponse
+    public function store(BrandStoreRequest $request): JsonResponse
     {
         try {
             $tag = $this->service->store($request->validated());
@@ -55,7 +55,7 @@ class TagController extends Controller
         }
     }
 
-    public function update(TagUpdateRequest $request, int $id): JsonResponse
+    public function update(BrandUpdateRequest $request, int $id): JsonResponse
     {
         try {
             $tag = $this->service->getById($id);

@@ -2,12 +2,13 @@
 
 namespace App\Http\Requests\Admin\Product;
 
+use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * @property mixed $name
+ * @property string $name
+ * @property Product $product
  */
 class ProductUpdateRequest extends FormRequest
 {
@@ -46,7 +47,8 @@ class ProductUpdateRequest extends FormRequest
             'images.*'          => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'image_ids'         => ['sometimes', 'array', 'nullable'],
             'image_ids.*'       => ['sometimes', 'string'],
-            'featured_image'    => ['required', 'string']
+            'featured_image'    => ['required', 'string'],
+            'brand_id'          => ['nullable', 'exists:brands,id'],
         ];
     }
 

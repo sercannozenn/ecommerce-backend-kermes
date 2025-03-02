@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -18,12 +19,16 @@ class Product extends Model
     protected $fillable = [
         'name',
         'slug',
+        'brand_id',
         'short_description',
         'long_description',
         'is_active',
         'view_count',
         'stock',
-        'stock_alert_limit'
+        'stock_alert_limit',
+        'keywords',
+        'seo_description',
+        'author'
     ];
 
     public function categories(): BelongsToMany
@@ -64,5 +69,10 @@ class Product extends Model
     public function variants(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'product_variants', 'product_id', 'variant_id');
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
     }
 }

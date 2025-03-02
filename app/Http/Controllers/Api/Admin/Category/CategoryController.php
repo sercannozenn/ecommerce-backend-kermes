@@ -32,8 +32,6 @@ class CategoryController extends Controller
 
             $categories = $this->categoryService->getPaginatedTags($page, $limit, $search, $sortBy, $sortOrder);
 
-
-//            $categories = $this->categoryService->getAll();
             return $this->success($categories);
         } catch (Exception $e) {
             return $this->error(500, ['error' => 'Kategoriler alınırken bir hata oluştu.']);

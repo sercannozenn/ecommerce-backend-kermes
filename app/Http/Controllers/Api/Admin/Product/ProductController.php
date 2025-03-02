@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Product\ProductStoreRequest;
 use App\Http\Requests\Admin\Product\ProductUpdateRequest;
 use App\Models\Product;
+use App\Services\BrandServices\BrandService;
 use App\Services\CategoryServices\CategoryService;
 use App\Services\ProductServices\ProductService;
 use App\Services\TagServices\TagService;
@@ -19,14 +20,16 @@ class ProductController extends Controller
     {
     }
 
-    public function create(TagService $tagService, CategoryService $categoryService)
+    public function create(TagService $tagService, CategoryService $categoryService, BrandService $brandService)
     {
         try {
             $categories = $categoryService->getAll();
             $tags       = $tagService->getAll();
+            $brands     = $brandService->getAll();
             $data       = [
                 'categories' => $categories,
-                'tags'       => $tags
+                'tags'       => $tags,
+                'brands'     => $brands
             ];
             return $this->success($data);
 
@@ -47,25 +50,28 @@ class ProductController extends Controller
         return $this->success($products);
     }
 
-    public function getFiltersData(CategoryService $categoryService, TagService $tagService): JsonResponse
+    public function getFiltersData(CategoryService $categoryService, TagService $tagService, BrandService $brandService): JsonResponse
     {
         $data = [
             'categories' => $categoryService->getAll(),
             'tags'       => $tagService->getAll(),
+            'brands'     => $brandService->getAll(),
         ];
         return $this->success($data);
     }
 
-    public function show(int $id, CategoryService $categoryService, TagService $tagService): JsonResponse
+    public function show(int $id, CategoryService $categoryService, TagService $tagService, BrandService $brandService): JsonResponse
     {
         try {
             $categories = $categoryService->getAll();
             $tags       = $tagService->getAll();
-            $product = $this->productService->getById($id);
+            $brands     = $brandService->getAll();
+            $product    = $this->productService->getById($id);
             $data       = [
                 'categories' => $categories,
                 'tags'       => $tags,
-                'product'       => $product
+                'brands'     => $brands,
+                'product'    => $product
             ];
             return $this->success($data);
         } catch (Exception $e) {
@@ -73,10 +79,8 @@ class ProductController extends Controller
         }
     }
 
-//    public function store(ProductStoreRequest $request): JsonResponse
-    public function store(Request $request)
+    public function store(ProductStoreRequest $request): JsonResponse
     {
-        return $request->all();
         try {
             $product = $this->productService->store($request->validated());
             return $this->success($product, 201);

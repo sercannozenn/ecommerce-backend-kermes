@@ -40,7 +40,12 @@ class ProductStoreRequest extends FormRequest
             'images.*'          => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'image_ids'         => ['required', 'array'],
             'image_ids.*'       => ['required', 'string'],
-            'featured_image'    => ['required', 'string']
+            'featured_image'    => ['required', 'string'],
+            'brand_id'          => ['nullable', 'exists:brands,id'],
+
+            'keywords'        => ['nullable', 'sometimes', 'string'],
+            'seo_description' => ['nullable', 'sometimes', 'string'],
+            'author'          => ['nullable', 'sometimes', 'string'],
         ];
     }
 
@@ -94,6 +99,15 @@ class ProductStoreRequest extends FormRequest
             'images.*.image' => 'Yüklenen dosya bir resim olmalıdır.',
             'images.*.mimes' => 'Resim formatı jpeg, png, jpg veya webp olmalıdır.',
             'images.*.max'   => 'Resim boyutu en fazla 2MB olabilir.',
+
+            'keywords.sometimes'       => 'Anahtar kelimeler alanı bazen gereklidir.',
+            'keywords.string'          => 'Anahtar kelimeler alanı metin olmalıdır.',
+
+            'seo_description.sometimes'=> 'SEO açıklaması alanı bazen gereklidir.',
+            'seo_description.string'   => 'SEO açıklaması alanı metin olmalıdır.',
+
+            'author.sometimes'         => 'Yazar alanı bazen gereklidir.',
+            'author.string'            => 'Yazar alanı metin olmalıdır.',
         ];
     }
 }
