@@ -32,7 +32,7 @@ class CategoryStoreRequest extends FormRequest
             'keywords'           => ['nullable', 'string'],
             'seo_description'    => ['nullable', 'string'],
             'author'             => ['nullable', 'string'],
-            'parent_category_id' => ['nullable', 'exists:categories,id'],
+            'parent_category_id' => ['nullable', 'sometimes', 'exists:categories,id'],
         ];
     }
 
@@ -40,6 +40,7 @@ class CategoryStoreRequest extends FormRequest
     {
         $this->merge([
                          'slug' => Str::slug($this->slug ?? $this->name),
+                         'parent_category_id' => $this->filled('parent_category_id') ? $this->parent_category_id : null,
                      ]);
     }
 

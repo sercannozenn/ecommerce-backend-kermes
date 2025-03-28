@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
 /**
- * @property string $name
+ * @property string  $name
  * @property Product $product
  */
 class ProductUpdateRequest extends FormRequest
@@ -48,7 +48,7 @@ class ProductUpdateRequest extends FormRequest
             'image_ids'         => ['sometimes', 'array', 'nullable'],
             'image_ids.*'       => ['sometimes', 'string'],
             'featured_image'    => ['required', 'string'],
-            'brand_id'          => ['nullable', 'exists:brands,id'],
+            'brand_id'          => ['nullable', 'sometimes', 'exists:brands,id'],
         ];
     }
 
@@ -61,6 +61,7 @@ class ProductUpdateRequest extends FormRequest
                          'tag_ids'         => json_decode($this->tag_ids, true),
                          'existing_images' => json_decode($this->existing_images, true),
                          'image_ids'       => json_decode($this->image_ids, true),
+//                         'brand_id'        => $this->brand_id === 'null' ? null : $this->brand_id,
                      ]);
     }
 

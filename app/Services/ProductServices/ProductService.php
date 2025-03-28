@@ -7,6 +7,7 @@ use App\Models\Product;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProductService
 {
@@ -19,7 +20,7 @@ class ProductService
         return $this->model->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants'])->get();
     }
 
-    public function getPaginatedProducts($page, $limit, $filter, $sortBy, $sortOrder): array
+    public function getPaginatedProducts(int $page = 1, int $limit = 10, array $filter = [], string $sortBy = 'id', string $sortOrder = 'desc'): array
     {
         $query            = $this->model::query();
         $search           = $filter['search'] ?? '';
@@ -120,7 +121,7 @@ class ProductService
         $query->orderBy($sortBy, $sortOrder);
         \Log::info('$sortBy: ' . $sortBy . ' - sortorder: ' . $sortOrder);
         $products = $query->select('products.*', DB::raw("DATE_FORMAT(products.created_at, '%d-%m-%Y %H:%i') as formatted_created_at"))
-                          ->with(['categories', 'tags', 'prices', 'discounts', 'images', 'variants', 'brand'])
+                          ->with(['categories', 'tags', 'latestPrice','prices', 'discounts', 'images', 'variants', 'brand'])
                           ->paginate($limit, ['*'], 'page', $page);
 
         return [
@@ -216,7 +217,15 @@ class ProductService
             if (isset($data['existing_images'])) {
                 $this->model->images()
                             ->whereNotIn('id', $data['existing_images'])
-                            ->delete();
+                            ->each(function ($image)
+                            {
+                                if ($image->image_path && Storage::disk('public')->exists($image->image_path))
+                                {
+                                    Storage::disk('public')->delete($image->image_path);
+                                }
+                                $image->delete();
+                            });
+//                            ->delete();
             }
             // Önce tüm görsellerin featured durumunu false yap
             $this->model->images()->update(['is_featured' => false]);
@@ -270,6 +279,12 @@ class ProductService
             $this->model->tags()->detach();
             $this->model->prices()->delete();
             $this->model->discounts()->delete();
+            // Görsellerin dosyalarını da sil
+            foreach ($this->model->images as $image) {
+                if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
+                    Storage::disk('public')->delete($image->image_path);
+                }
+            }
             $this->model->images()->delete();
             $this->model->variants()->detach();
             $result = $this->model->delete();

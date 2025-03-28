@@ -60,7 +60,7 @@ class CategoryController extends Controller
             $category = $this->categoryService->store($request->validated());
             return $this->success($category, 201);
         } catch (Exception $e) {
-            return $this->error(500, ['error' => 'Kategori oluşturulurken bir hata oluştu.']);
+            return $this->error(500, ['error' => 'Kategori oluşturulurken bir hata oluştu.', 'hata' => $e->getMessage()]);
         }
     }
 

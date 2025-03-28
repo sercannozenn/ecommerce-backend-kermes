@@ -46,6 +46,11 @@ class Product extends Model
         return $this->hasMany(ProductPrice::class);
     }
 
+    public function latestPrice(): HasOne
+    {
+        return $this->hasOne(ProductPrice::class)->latestOfMany();
+    }
+
     public function discounts(): HasMany
     {
         return $this->hasMany(ProductDiscount::class);

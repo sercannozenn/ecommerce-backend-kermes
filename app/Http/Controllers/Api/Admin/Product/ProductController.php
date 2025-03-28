@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin\Product;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Product\ProductStoreRequest;
 use App\Http\Requests\Admin\Product\ProductUpdateRequest;
+
 use App\Models\Product;
 use App\Services\BrandServices\BrandService;
 use App\Services\CategoryServices\CategoryService;
@@ -20,7 +21,9 @@ class ProductController extends Controller
     {
     }
 
-    public function create(TagService $tagService, CategoryService $categoryService, BrandService $brandService)
+    public function create(TagService $tagService,
+                           CategoryService $categoryService,
+                           BrandService $brandService)
     {
         try {
             $categories = $categoryService->getAll();
