@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('keywords')->nullable();
             $table->text('seo_description')->nullable();
             $table->string('author')->nullable();
-            $table->foreignId('parent_category_id')->nullable()->constrained('categories');
+            $table->foreignId('parent_category_id')->nullable()->constrained('categories')->onDelete('cascade');
             $table->timestamps();
         });
 

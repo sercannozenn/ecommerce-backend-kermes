@@ -101,7 +101,7 @@ class CategoryController extends Controller
             $this->categoryService->setCategory($category)->delete();
             return $this->success(null);
         } catch (Exception $e) {
-            return $this->error(500, ['error' => 'Kategori silinirken bir hata oluştu.']);
+            return $this->error(500, ['error' => 'Kategori silinirken bir hata oluştu.', 'message' => $e->getMessage()]);
         }
     }
 }
