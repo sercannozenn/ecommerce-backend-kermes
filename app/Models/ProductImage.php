@@ -18,6 +18,13 @@ class ProductImage extends Model
     public $timestamps= false;
 
 
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image_path ? asset('storage/' . $this->image_path) : null;
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

@@ -311,4 +311,14 @@ class ProductService
 
         return $this->model;
     }
+
+    public function getLatest(int $limit = 8): Collection
+    {
+        return $this->model
+            ->with(['categories', 'brand', 'tags','latestPrice', 'featuredImage'])
+            ->where('is_active', true)
+            ->latest()
+            ->limit($limit)
+            ->get();
+    }
 }

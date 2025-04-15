@@ -30,6 +30,12 @@ class Slider extends Model
 
     protected $appends = ['path_url'];
 
+    protected $casts = [
+        'row_1_css' => 'array',
+        'row_2_css' => 'array',
+        'button_css' => 'array',
+    ];
+
     public function getPathUrlAttribute(): ?string
     {
         return $this->path ? asset('storage/' . $this->path) : null;

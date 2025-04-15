@@ -13,11 +13,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']); // Ekleyin
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
-
-
 Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
 
     Route::get('/', function (){
@@ -45,3 +40,6 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
     Route::resource('settings', SettingsController::class);
 
 });
+
+Route::get('/sliders', [\App\Http\Controllers\Api\Front\Slider\SliderController::class, 'index']);
+Route::get('/products/latest', [\App\Http\Controllers\Api\Front\Product\ProductController::class, 'latest']);
