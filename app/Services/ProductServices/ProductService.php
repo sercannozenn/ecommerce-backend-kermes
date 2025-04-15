@@ -314,11 +314,35 @@ class ProductService
 
     public function getLatest(int $limit = 8): Collection
     {
-        return $this->model
+        $products =  $this->model
             ->with(['categories', 'brand', 'tags','latestPrice', 'featuredImage'])
             ->where('is_active', true)
             ->latest()
             ->limit($limit)
             ->get();
+
+        return $this->enrichProductPrices($products);
+    }
+    public function enrichProductPrices(\Illuminate\Support\Collection|Product $products): Collection|Product
+    {
+        $discountService = app(DiscountService::class);
+
+        $enrich = function (Product $product) use ($discountService) {
+            $discounted = $discountService->getDiscountedPrice($product);
+
+            if ($product->latestPrice) {
+                $product->latestPrice->price_discount = $discounted;
+            }
+
+            $product->discounted_price = $discounted;
+
+            return $product;
+        };
+
+        if ($products instanceof Product) {
+            return $enrich($products);
+        }
+
+        return $products->map(fn ($product) => $enrich($product));
     }
 }
