@@ -164,4 +164,20 @@ class AnnouncementService
         return $this->model;
     }
 
+    public function getActiveAnnouncementsAndEvents(int $limit = 2, int $offset = 0): Collection
+    {
+        return $this->model::query()
+                           ->select('*',
+                                    DB::raw("DATE_FORMAT(date, '%d-%m-%Y') as formatted_date")
+                           )
+                           ->where('is_active', true)
+                           ->whereDate('date', '>=', now())
+                           ->orderBy('date', 'DESC')
+                           ->offset($offset)
+                           ->limit($limit)
+                           ->get();
+    }
+
+
+
 }

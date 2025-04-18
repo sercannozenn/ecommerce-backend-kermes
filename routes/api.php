@@ -43,3 +43,4 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
 
 Route::get('/sliders', [\App\Http\Controllers\Api\Front\Slider\SliderController::class, 'index']);
 Route::get('/products/latest', [\App\Http\Controllers\Api\Front\Product\ProductController::class, 'latest']);
+Route::get('announcements/home', [\App\Http\Controllers\Api\Front\Announcement\AnnouncementController::class, 'getActiveAnnouncementsAndEvents']);
