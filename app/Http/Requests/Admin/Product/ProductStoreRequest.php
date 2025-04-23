@@ -28,7 +28,7 @@ class ProductStoreRequest extends FormRequest
             'short_description' => ['nullable', 'string'],
             'long_description'  => ['nullable', 'string'],
             'price'             => ['required', 'numeric', 'min:0'],
-            'discount_price'    => ['nullable', 'numeric', 'min:0', 'lt:price'],
+            'price_discount'    => ['nullable', 'numeric', 'min:0', 'lt:price'],
             'is_active'         => ['boolean'],
             'stock'             => ['required', 'integer', 'min:0'],
             'stock_alert_limit' => ['required', 'integer', 'min:10'],
@@ -77,9 +77,9 @@ class ProductStoreRequest extends FormRequest
             'price.required'         => 'Ürün fiyatı zorunludur.',
             'price.numeric'          => 'Ürün fiyatı sayısal olmalıdır.',
             'price.min'              => 'Ürün fiyatı 0 veya daha büyük olmalıdır.',
-            'discount_price.numeric' => 'İndirimli fiyat sayısal olmalıdır.',
-            'discount_price.min'     => 'İndirimli fiyat 0 veya daha büyük olmalıdır.',
-            'discount_price.lt'      => 'İndirimli fiyat normal fiyattan küçük olmalıdır.',
+            'price_discount.numeric' => 'İndirimli fiyat sayısal olmalıdır.',
+            'price_discount.min'     => 'İndirimli fiyat 0 veya daha büyük olmalıdır.',
+            'price_discount.lt'      => 'İndirimli fiyat normal fiyattan küçük olmalıdır.',
 
             'is_active.boolean' => 'Aktiflik durumu doğru formatta olmalıdır.',
 

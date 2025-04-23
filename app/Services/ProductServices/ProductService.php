@@ -8,6 +8,7 @@ use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ProductService
 {
@@ -31,6 +32,8 @@ class ProductService
         $maxPrice         = $filter['max_price'] ?? null;
         $minPriceDiscount = $filter['min_price_discount'] ?? null;
         $maxPriceDiscount = $filter['max_price_discount'] ?? null;
+        $minFinalPrice    = $filter['min_price_discount'] ?? null;
+        $maxFinalPrice    = $filter['max_price_discount'] ?? null;
 
         if (!empty($search)) {
             $query->where('name', 'like', "%{$search}%")
@@ -56,7 +59,7 @@ class ProductService
                          ->orWhere('slug', 'like', "%{$search}%");
             });
 
-            $query->orWhereHas('prices', function ($priceQuery) use ($search)
+            $query->orWhereHas('latestPrice', function ($priceQuery) use ($search)
             {
                 $priceQuery->where('price', 'like', "%{$search}%")
                            ->orWhere('price_discount', 'like', "%{$search}%");
@@ -83,32 +86,40 @@ class ProductService
         }
         if (!empty($minPrice))
         {
-            $query->whereHas('prices', function ($priceQuery) use ($minPrice)
+            $query->whereHas('latestPrice', function ($priceQuery) use ($minPrice)
             {
                 $priceQuery->where('price', '>=', $minPrice);
             });
         }
         if (!empty($maxPrice))
         {
-            $query->whereHas('prices', function ($priceQuery) use ($maxPrice)
+            $query->whereHas('latestPrice', function ($priceQuery) use ($maxPrice)
             {
                 $priceQuery->where('price', '<=', $maxPrice);
             });
         }
         if (!empty($minPriceDiscount))
         {
-            $query->whereHas('prices', function ($priceQuery) use ($minPriceDiscount)
+            $query->whereHas('latestPrice', function ($priceQuery) use ($minPriceDiscount)
             {
                 $priceQuery->where('price_discount', '>=', $minPriceDiscount);
             });
         }
         if (!empty($maxPriceDiscount))
         {
-            $query->whereHas('prices', function ($priceQuery) use ($maxPriceDiscount)
+            $query->whereHas('latestPrice', function ($priceQuery) use ($maxPriceDiscount)
             {
                 $priceQuery->where('price_discount', '<=', $maxPriceDiscount);
             });
         }
+        if (!empty($minFinalPrice)) {
+            $query->whereHas('activePriceHistory', fn($q) => $q->where('price_discount', '>=', $minFinalPrice));
+        }
+
+        if (!empty($maxFinalPrice)) {
+            $query->whereHas('activePriceHistory', fn($q) => $q->where('price_discount', '<=', $maxFinalPrice));
+        }
+
 
 
         if ($sortBy === 'price'){
@@ -118,10 +129,19 @@ class ProductService
             });
             $sortBy = 'product_prices.price';
         }
+        if ($sortBy === 'final_price') {
+            $query->leftJoin('product_price_histories', function ($join) {
+                $join->on('product_price_histories.product_id', '=', 'products.id')
+                     ->where('product_price_histories.is_closed', false);
+            });
+
+            $sortBy = 'product_price_histories.price_discount';
+        }
+
         $query->orderBy($sortBy, $sortOrder);
-        \Log::info('$sortBy: ' . $sortBy . ' - sortorder: ' . $sortOrder);
+
         $products = $query->select('products.*', DB::raw("DATE_FORMAT(products.created_at, '%d-%m-%Y %H:%i') as formatted_created_at"))
-                          ->with(['categories', 'tags', 'latestPrice','prices', 'discounts', 'images', 'variants', 'brand'])
+                          ->with(['categories', 'tags', 'latestPrice','prices', 'images', 'variants', 'brand', 'activePriceHistory'])
                           ->paginate($limit, ['*'], 'page', $page);
 
         return [
@@ -134,11 +154,30 @@ class ProductService
 
     public function getById(int $id): Product
     {
-        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'discounts', 'images', 'variants'])->findOrFail($id);
+        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants'])->findOrFail($id);
+    }
+
+    public function getByCategoryId(int $categoryId): Collection
+    {
+        return $this->model::query()
+                           ->whereHas('categories', function ($q) use ($categoryId) {
+                               $q->where('id', $categoryId);
+                           })
+                           ->with(['latestPrice'])
+                           ->get();
+    }
+
+    public function getByBrandId(int $brandId): Collection
+    {
+        return $this->model::query()
+                           ->where('brand_id', $brandId)
+                           ->with(['latestPrice'])
+                           ->get();
     }
 
     /**
      * @throws Exception
+     * @throws Throwable
      */
     public function store(array $data): Product
     {
@@ -150,11 +189,7 @@ class ProductService
 
             // Ürün fiyatını ekle
             if (!empty($data['price'])) {
-                $product->prices()->create([
-                                               'price'          => $data['price'],
-                                               'price_discount' => $data['price_discount'] ?? null,
-                                               'updated_by'     => auth()->id()
-                                           ]);
+                $this->savePriceAndHistory($product, $data['price'], $data['price_discount'] ?? null);
             }
             // Resimleri yükle
             if (!empty($data['images'])) {
@@ -187,6 +222,7 @@ class ProductService
 
     /**
      * @throws Exception
+     * @throws \Throwable
      */
     public function update(array $data): self
     {
@@ -198,7 +234,8 @@ class ProductService
 
             // Son eklenen fiyat kaydını al
             $lastPrice = $this->model->prices()->latest('created_at')->first();
-
+            $newPrice  = $data['price'] ?? null;
+            $newDiscount = $data['price_discount'] ?? null;
             // Yeni fiyat, son kaydedilen fiyattan farklıysa yeni kayıt oluştur
             if (!empty($data['price']) && (
                     !$lastPrice ||
@@ -206,11 +243,8 @@ class ProductService
                     $lastPrice->price_discount != ($data['price_discount'] ?? null)
                 )) {
                 \Log::info('İndirimli Fİyat:  ' . $data['price_discount']);
-                $this->model->prices()->create([
-                                                   'price'          => $data['price'],
-                                                   'price_discount' => $data['price_discount'] ?? null,
-                                                   'updated_by'     => auth()->id()
-                                               ]);
+
+                $this->savePriceAndHistory($this->model, $newPrice, $newDiscount);
             }
 
             // Silinecek görselleri belirle ve sil
@@ -269,7 +303,21 @@ class ProductService
     }
 
     /**
+     * @throws Throwable
+     */
+    private function savePriceAndHistory(Product $product, float $price, ?float $priceDiscount = null): void
+    {
+        $newPrice = $product->prices()->create([
+                                                   'price'          => $price,
+                                                   'price_discount' => $priceDiscount,
+                                                   'updated_by'     => auth()->id()
+                                               ]);
+
+        app(ProductPriceHistoryService::class)->createHistory($product, $newPrice);
+    }
+    /**
      * @throws Exception
+     * @throws Throwable
      */
     public function delete(): bool|null
     {
@@ -323,18 +371,14 @@ class ProductService
 
         return $this->enrichProductPrices($products);
     }
-    public function enrichProductPrices(\Illuminate\Support\Collection|Product $products): Collection|Product
+    public function enrichProductPrices(Collection|Product $products): Collection|Product
     {
-        $discountService = app(DiscountService::class);
-
-        $enrich = function (Product $product) use ($discountService) {
-            $discounted = $discountService->getDiscountedPrice($product);
-
-            if ($product->latestPrice) {
-                $product->latestPrice->price_discount = $discounted;
+        $enrich = function (Product $product) {
+            if ($product->activePriceHistory) {
+                $product->final_price = $product->activePriceHistory->price_discount ?? $product->activePriceHistory->price;
+            } else {
+                $product->final_price = null;
             }
-
-            $product->discounted_price = $discounted;
 
             return $product;
         };
@@ -344,5 +388,21 @@ class ProductService
         }
 
         return $products->map(fn ($product) => $enrich($product));
+    }
+
+    public function getFrontendPaginatedProducts(int $limit = 12): LengthAwarePaginator
+    {
+        return $this->model::query()
+                           ->select('id', 'name', 'slug', 'short_description', 'brand_id')
+                           ->with([
+                                      'categories:id,name,slug',
+                                      'tags:id,name,slug',
+                                      'brand:id,name,slug',
+                                      'latestPrice:id,product_id,price',
+                                      'images' => fn($q) => $q->select('id', 'product_id', 'image')->orderBy('order')->limit(1),
+                                  ])
+                           ->where('is_active', true)
+                           ->orderByDesc('id')
+                           ->paginate($limit);
     }
 }

@@ -4,26 +4,44 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProductDiscount extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'product_id',
-        'category_id',
-        'tag_id',
-        'user_id',
-        'discount_percentage',
-        'discount_fixed',
+        'name',
+        'description',
+        'target_type',
+        'discount_type',
+        'discount_amount',
+        'priority',
+        'is_active',
         'discount_start',
-        'discount_end'
+        'discount_end',
     ];
 
+    protected $casts = [
+        'is_active'       => 'boolean',
+        'priority'        => 'integer',
+        'discount_amount' => 'float',
+        'discount_start'      => 'datetime',
+        'discount_end'        => 'datetime',
+    ];
 
-    public function product(): BelongsTo
+    protected $dates = ['deleted_at'];
+
+    // 🔗 Hedef ilişkileri
+    public function targets(): HasMany
     {
-        return $this->belongsTo(Product::class);
+        return $this->hasMany(ProductDiscountTarget::class, 'product_discount_id');
+    }
+
+    // 🔗 İndirim uygulandığında oluşturulan fiyat geçmişleri
+    public function histories(): HasMany
+    {
+        return $this->hasMany(ProductPriceHistory::class, 'calculated_discount_id');
     }
 }

@@ -84,12 +84,12 @@ class ProductController extends Controller
 
     public function store(ProductStoreRequest $request): JsonResponse
     {
-        try {
+//        try {
             $product = $this->productService->store($request->validated());
             return $this->success($product, 201);
-        } catch (Exception $e) {
-            return $this->error(500, ['error' => 'Ürün oluşturulurken bir hata oluştu.', 'message' => $e->getMessage()]);
-        }
+//        } catch (Exception $e) {
+//            return $this->error(500, ['error' => 'Ürün oluşturulurken bir hata oluştu.', 'message' => $e->getMessage()]);
+//        }
     }
 
     public function update(ProductUpdateRequest $request, Product $product)

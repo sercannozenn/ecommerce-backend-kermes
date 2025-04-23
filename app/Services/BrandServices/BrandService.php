@@ -68,4 +68,13 @@ class BrandService
 
         return $this->model;
     }
+
+    public function getActiveBrands(): Collection
+    {
+        return $this->model::query()
+                           ->select('id', 'name', 'slug')
+                           ->where('is_active', true)
+                           ->orderBy('name')
+                           ->get();
+    }
 }

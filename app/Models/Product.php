@@ -31,6 +31,14 @@ class Product extends Model
         'author'
     ];
 
+    protected $appends = ['final_price'];
+    public function getFinalPriceAttribute()
+    {
+        return $this->activePriceHistory?->price_discount ?? $this->latestPrice?->price_discount ?? $this->latestPrice?->price;
+    }
+
+
+
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class, 'category_product');
@@ -50,12 +58,16 @@ class Product extends Model
     {
         return $this->hasOne(ProductPrice::class)->latestOfMany();
     }
-
-    public function discounts(): HasMany
+    public function priceHistories(): HasMany
     {
-        return $this->hasMany(ProductDiscount::class);
+        return $this->hasMany(ProductPriceHistory::class);
     }
-
+    public function activePriceHistory(): HasOne
+    {
+        return $this->hasOne(ProductPriceHistory::class)
+                    ->where('is_closed', false)
+                    ->latest();
+    }
     public function publishHistory(): HasMany
     {
         return $this->hasMany(ProductPublishHistory::class);

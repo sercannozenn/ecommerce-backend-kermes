@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\Category\CategoryController;
 use App\Http\Controllers\Api\Admin\Product\ProductController;
 use App\Http\Controllers\Api\Admin\Announcement\AnnouncementController;
 use App\Http\Controllers\Api\Admin\Settings\SettingsController;
+use App\Http\Controllers\Api\Admin\Product\ProductDiscountController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +39,9 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
     Route::put('/announcement/{announcement}/change-status', [AnnouncementController::class, 'changeStatus']);
 
     Route::resource('settings', SettingsController::class);
+
+    Route::get('product-discount/search-targets', [ProductDiscountController::class, 'searchTargets']);
+    Route::resource('product-discount', ProductDiscountController::class);
 
 });
 

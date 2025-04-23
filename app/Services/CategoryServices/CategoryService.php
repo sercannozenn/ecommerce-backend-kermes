@@ -106,4 +106,14 @@ class CategoryService
 
         return $this->model;
     }
+
+    public function getActiveCategories(): Collection
+    {
+        return $this->model::query()
+                           ->select('id', 'name', 'slug', 'parent_category_id')
+                           ->where('is_active', true)
+                           ->orderBy('name')
+                           ->get()
+                           ->groupBy('parent_category_id');
+    }
 }
