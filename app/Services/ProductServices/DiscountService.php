@@ -129,7 +129,8 @@ class DiscountService
             if (in_array($discount->target_type, ['product', 'category', 'tag', 'brand']) &&
                 $this->shouldApplyDiscount($discount))
             {
-                $this->applyDiscount($discount);
+                \Log::info("discount" . $discount->name);
+                $this->applyDiscount($discount, 'İndirim oluşturuldu');
             }
 
             DB::commit();
@@ -171,7 +172,7 @@ class DiscountService
             $this->targetService->syncTargets($discount, $data['targets']);
 
             if (in_array($discount->target_type, ['product', 'category', 'tag', 'brand']) && $this->shouldApplyDiscount($discount, true)) {
-                $this->applyDiscount($discount);
+                $this->applyDiscount($discount, 'İndirim güncellendi.');
             }
 
             DB::commit();
@@ -229,7 +230,10 @@ class DiscountService
     }
 
 
-    public function applyDiscount(ProductDiscount $discount): void
+    /**
+     * @throws Throwable
+     */
+    public function applyDiscount(ProductDiscount $discount, string $reason): void
     {
         $targetIds = $discount->targets->pluck('target_id');
         $type      = $discount->target_type;
@@ -279,23 +283,26 @@ class DiscountService
 
             // Tarih aralığına göre closed çekilmeli.
             // Yani eğer indirimin tarihi hemen şu an başlıyorsa is_closed true olmalı ancak hemen başlamıyorsa bu işlemi command yapmalı.
-            ProductPriceHistory::where('product_id', $product->id)
-                               ->where('is_closed', false)
-                               ->update([
-                                            'is_closed'   => true,
-                                            'valid_until' => now(),
-                                        ]);
+//            ProductPriceHistory::where('product_id', $product->id)
+//                               ->where('is_closed', false)
+//                               ->update([
+//                                            'is_closed'   => true,
+//                                            'valid_until' => now(),
+//                                        ]);
 
-            ProductPriceHistory::create([
-                                            'product_id'             => $product->id,
-                                            'product_price_id'       => $priceRow->id,
-                                            'price'                  => $basePrice,
-                                            'price_discount'         => $newDiscounted,
-                                            'calculated_discount_id' => $discount->id,
-                                            'is_closed'              => false,
-                                            'valid_from'             => $discount->discount_start,
-                                            'valid_until'            => $discount->discount_end,
-                                        ]);
+            // Tarih aralığına göre önceki açık kayıtları kapat + yeni kayıt atma atla mantığı
+            app(ProductPriceHistoryService::class)->createHistory($product, $priceRow, $reason);
+
+//            ProductPriceHistory::create([
+//                                            'product_id'             => $product->id,
+//                                            'product_price_id'       => $priceRow->id,
+//                                            'price'                  => $basePrice,
+//                                            'price_discount'         => $newDiscounted,
+//                                            'calculated_discount_id' => $discount->id,
+//                                            'is_closed'              => false,
+//                                            'valid_from'             => $discount->discount_start,
+//                                            'valid_until'            => $discount->discount_end,
+//                                        ]);
         }
     }
 
@@ -320,7 +327,7 @@ class DiscountService
 
     public function getActiveDiscount(Product $product): ?ProductDiscount
     {
-        return $this->getActiveDiscounts($product)->sortBy('priority')->first();
+        return $this->getActiveDiscounts($product)->sortByDesc('priority')->first();
     }
 
     /**
@@ -430,12 +437,12 @@ class DiscountService
         if ($newStatus) {
             // 4.1) Aktive alındığında indirimi uygula
             if (! empty($shouldApply)) {
-                $this->applyDiscount($this->model);
+                $this->applyDiscount($this->model, "İndirimin durumu değiştirildi. İndirim Adı: " . $this->model->name . ', Yeni İndirim Durumu: Aktif');
             }
         } else {
             // 4.2) Pasife alındığında revert işlemi
             $historyService = app()->make(ProductPriceHistoryService::class);
-            $historyService->revertDiscount($this->model);
+            $historyService->revertDiscount($this->model, "İndirimin durumu değiştirildi. İndirim Adı: " . $this->model->name . ', Yeni İndirim Durumu: Pasif');
         }
 
         return [

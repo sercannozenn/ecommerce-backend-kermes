@@ -42,6 +42,9 @@ class ProductDiscountController extends Controller
         );
     }
 
+    /**
+     * @throws \Throwable
+     */
     public function store(ProductDiscountRequest $request): JsonResponse
     {
         $discount = $this->discountService->store($request->validated());

@@ -189,7 +189,7 @@ class ProductService
 
             // Ürün fiyatını ekle
             if (!empty($data['price'])) {
-                $this->savePriceAndHistory($product, $data['price'], $data['price_discount'] ?? null);
+                $this->savePriceAndHistory($product, $data['price'], $data['price_discount'] ?? null, 'Ürün oluşturuldu.');
             }
             // Resimleri yükle
             if (!empty($data['images'])) {
@@ -244,7 +244,7 @@ class ProductService
                 )) {
                 \Log::info('İndirimli Fİyat:  ' . $newDiscount . ' - ' . $newPrice );
 
-                $this->savePriceAndHistory($this->model, $newPrice, $newDiscount);
+                $this->savePriceAndHistory($this->model, $newPrice, $newDiscount, 'Ürün güncellendi ve fiyatı değiştirildi.');
             }
 
             // Silinecek görselleri belirle ve sil
@@ -305,7 +305,7 @@ class ProductService
     /**
      * @throws Throwable
      */
-    private function savePriceAndHistory(Product $product, float $price, ?float $priceDiscount = null): void
+    private function savePriceAndHistory(Product $product, float $price, ?float $priceDiscount = null, string $reason): void
     {
         $newPrice = $product->prices()->create([
                                                    'price'          => $price,
@@ -313,7 +313,7 @@ class ProductService
                                                    'updated_by'     => auth()->id()
                                                ]);
 
-        app(ProductPriceHistoryService::class)->createHistory($product, $newPrice);
+        app(ProductPriceHistoryService::class)->createHistory($product, $newPrice, $reason);
     }
     /**
      * @throws Exception

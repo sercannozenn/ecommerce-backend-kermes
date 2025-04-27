@@ -16,6 +16,8 @@ class ProductPriceHistory extends Model
         'is_closed',
         'valid_from',
         'valid_until',
+        'updated_by',
+        'reason',
     ];
 
     protected $casts = [
@@ -27,6 +29,11 @@ class ProductPriceHistory extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by', 'id');
     }
 
     public function productPrice(): BelongsTo

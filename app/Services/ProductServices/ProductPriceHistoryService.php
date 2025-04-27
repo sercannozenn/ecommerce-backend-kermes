@@ -26,7 +26,7 @@ class ProductPriceHistoryService
     /**
      * @throws Throwable
      */
-    public function createHistory(Product $product, ProductPrice $price): ProductPriceHistory
+    public function createHistory(Product $product, ProductPrice $price, string $reason): ProductPriceHistory
     {
         DB::beginTransaction();
         try {
@@ -45,8 +45,9 @@ class ProductPriceHistoryService
                                 ->where('is_closed', false)
                                 ->orderBy('valid_from', 'desc')
                                 ->first();
-            \Log::info('last: ' . $last->price_discount . ' - ' . $last->price);
+            \Log::info('last: ' . $last?->price_discount . ' - ' . $last?->price);
             \Log::info('base: ' . $basePrice);
+            \Log::info('discounted: ' . $discounted);
 
             // 4) Eğer son kayıt aynı indirim ve fiyat bilgilerine sahipse, hiçbir şey yapma
             if (
@@ -78,6 +79,8 @@ class ProductPriceHistoryService
                                                 'is_closed'              => false,
                                                 'valid_from'             => now(),
                                                 'valid_until'            => null,
+                                                'updated_by'             => auth()->id(),
+                                                'reason'                 => $reason,
                                             ]);
 
             DB::commit();
@@ -91,7 +94,7 @@ class ProductPriceHistoryService
     /**
      * @throws Throwable
      */
-    public function revertDiscount(ProductDiscount $discount): void
+    public function revertDiscount(ProductDiscount $discount, string $reason): void
     {
         // 1) Etkilenen ürünleri sorgula
         $targetIds = $discount->targets->pluck('target_id')->toArray();
@@ -131,7 +134,7 @@ class ProductPriceHistoryService
 
             // createHistory zaten açık kayıtları kapatıp
             // aktif indirim veya baz fiyatı history’e ekliyor
-            $this->createHistory($product, $priceRow);
+            $this->createHistory($product, $priceRow, $reason);
         }
     }
 
@@ -141,14 +144,19 @@ class ProductPriceHistoryService
                            ->where('product_id', $product->id)
                            ->orderBy('valid_from')
             // İndirimin adını almak için eager load
-                           ->with('discount:id,name')
-                           ->get(['price','price_discount','calculated_discount_id','valid_from','valid_until'])
+                           ->with([
+                               'discount:id,name',
+                               'updatedBy:id,name'
+                                  ])
+                           ->get(['price','price_discount','calculated_discount_id','valid_from','valid_until', 'updated_by', 'reason'])
                            ->map(fn($h) => [
                                'price'            => round($h->price, 2),
                                'price_discount'   => round($h->price_discount, 2),
                                'discount_name'    => $h->discount?->name ?? 'İndirimsiz',
                                'from'             => $h->valid_from->toDateTimeString(),
                                'until'            => $h->valid_until?->toDateTimeString(),
+                               'updated_by'       => $h->updatedBy?->name,
+                               'reason'           => $h->reason,
                            ]);
     }
 
