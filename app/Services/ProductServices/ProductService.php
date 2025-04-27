@@ -242,7 +242,7 @@ class ProductService
                     $lastPrice->price != $data['price'] ||
                     $lastPrice->price_discount != ($data['price_discount'] ?? null)
                 )) {
-                \Log::info('İndirimli Fİyat:  ' . $data['price_discount']);
+                \Log::info('İndirimli Fİyat:  ' . $newDiscount . ' - ' . $newPrice );
 
                 $this->savePriceAndHistory($this->model, $newPrice, $newDiscount);
             }

@@ -45,6 +45,8 @@ class ProductPriceHistoryService
                                 ->where('is_closed', false)
                                 ->orderBy('valid_from', 'desc')
                                 ->first();
+            \Log::info('last: ' . $last->price_discount . ' - ' . $last->price);
+            \Log::info('base: ' . $basePrice);
 
             // 4) Eğer son kayıt aynı indirim ve fiyat bilgilerine sahipse, hiçbir şey yapma
             if (
