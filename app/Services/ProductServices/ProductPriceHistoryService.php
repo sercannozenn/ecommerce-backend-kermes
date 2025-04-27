@@ -16,6 +16,12 @@ class ProductPriceHistoryService
     {
     }
 
+    public function setHistory(ProductPriceHistory $history): self
+    {
+        $this->model = $history;
+        return $this;
+    }
+
     /**
      * @throws Throwable
      */
@@ -57,4 +63,53 @@ class ProductPriceHistoryService
             throw $e;
         }
     }
+
+    /**
+     * @throws Throwable
+     */
+    public function revertDiscount(ProductDiscount $discount): void
+    {
+        // 1) Etkilenen ürünleri sorgula
+        $targetIds = $discount->targets->pluck('target_id')->toArray();
+        $type      = $discount->target_type;
+
+        $productQuery = Product::query()->with('latestPrice');
+
+        switch ($type) {
+            case 'product':
+                $productQuery->whereIn('id', $targetIds);
+                break;
+            case 'category':
+                $productQuery->whereHas('categories', fn($q) =>
+                $q->whereIn('categories.id', $targetIds)
+                );
+                break;
+            case 'tag':
+                $productQuery->whereHas('tags', fn($q) =>
+                $q->whereIn('tags.id', $targetIds)
+                );
+                break;
+            case 'brand':
+                $productQuery->whereIn('brand_id', $targetIds);
+                break;
+            default:
+                return;
+        }
+
+        $products = $productQuery->get();
+
+        // 2) Her ürün için createHistory ile yeni state’i oluştur
+        foreach ($products as $product) {
+            $priceRow = $product->latestPrice;
+            if (! $priceRow) {
+                continue;
+            }
+
+            // createHistory zaten açık kayıtları kapatıp
+            // aktif indirim veya baz fiyatı history’e ekliyor
+            $this->createHistory($product, $priceRow);
+        }
+    }
+
+
 }

@@ -18,9 +18,9 @@ use Throwable;
 
 class DiscountService
 {
+    protected string $message = '';
     public function __construct(protected ProductDiscount              $model,
-                                protected ProductDiscountTargetService $targetService
-    )
+                                protected ProductDiscountTargetService $targetService)
     {
     }
 
@@ -29,7 +29,8 @@ class DiscountService
         $query = $this->model::query();
 
         if (!empty($filter['search'])) {
-            $query->where(function ($q) use ($filter) {
+            $query->where(function ($q) use ($filter)
+            {
                 $q->where('name', 'like', '%' . $filter['search'] . '%')
                   ->orWhere('description', 'like', '%' . $filter['search'] . '%');
             });
@@ -44,7 +45,7 @@ class DiscountService
         }
 
         if ($filter['is_active'] !== '') {
-            $query->where('is_active', (bool) $filter['is_active']);
+            $query->where('is_active', (bool)$filter['is_active']);
         }
 
         $query->orderBy($sortBy, $sortOrder);
@@ -101,11 +102,11 @@ class DiscountService
      */
     public function store(array $data): ProductDiscount
     {
-        if ($this->hasConflict($data)) {
-            throw ValidationException::withMessages([
-                                                        'targets' => ['Seçilen hedef(ler) için aynı tarih aralığında tanımlı başka bir indirim zaten mevcut.']
-                                                    ]);
-        }
+//        if ($this->hasConflict($data)) {
+//            throw ValidationException::withMessages([
+//                                                        'targets' => ['Seçilen hedef(ler) için aynı tarih aralığında tanımlı başka bir indirim zaten mevcut.']
+//                                                    ]);
+//        }
 
         DB::beginTransaction();
 
@@ -125,7 +126,9 @@ class DiscountService
             $this->targetService
                 ->createTargets($discount->id, $data['target_type'], $data['targets']);
 
-            if (in_array($discount->target_type, ['product', 'category', 'tag', 'brand'])) {
+            if (in_array($discount->target_type, ['product', 'category', 'tag', 'brand']) &&
+                $this->shouldApplyDiscount($discount))
+            {
                 $this->applyDiscount($discount);
             }
 
@@ -142,11 +145,11 @@ class DiscountService
      */
     public function update(int $id, array $data): ProductDiscount
     {
-        if ($this->hasConflict($data, $id)) {
-            throw ValidationException::withMessages([
-                                                        'targets' => ['Seçilen hedef(ler) için aynı tarih aralığında tanımlı başka bir indirim zaten mevcut.']
-                                                    ]);
-        }
+//        if ($this->hasConflict($data, $id)) {
+//            throw ValidationException::withMessages([
+//                                                        'targets' => ['Seçilen hedef(ler) için aynı tarih aralığında tanımlı başka bir indirim zaten mevcut.']
+//                                                    ]);
+//        }
 
         DB::beginTransaction();
 
@@ -167,7 +170,7 @@ class DiscountService
 
             $this->targetService->syncTargets($discount, $data['targets']);
 
-            if (in_array($discount->target_type, ['product', 'category', 'tag', 'brand'])) {
+            if (in_array($discount->target_type, ['product', 'category', 'tag', 'brand']) && $this->shouldApplyDiscount($discount, true)) {
                 $this->applyDiscount($discount);
             }
 
@@ -190,6 +193,41 @@ class DiscountService
             ->getQueryForConflictCheck($targetIds, $targetType, $start, $end, $excludeId)
             ->exists();
     }
+
+    /**
+     * Yeni indirimin price history e uygulanıp uygulanmayacağını kontrol eder.
+     *
+     * @param  ProductDiscount  $discount
+     * @param  bool             $excludeSelf  (update sırasında kendisini hariç tutmak için)
+     * @return bool
+     */
+    private function shouldApplyDiscount(ProductDiscount $discount, bool $excludeSelf = false): bool
+    {
+        // Aynı tipte, aynı hedef(ler) için
+        $query = $this->model::query()
+                             ->where('target_type', $discount->target_type)
+                             ->where('discount_start', '<=', $discount->discount_end)
+                             ->where('discount_end',   '>=', $discount->discount_start)
+                             ->where('is_active', true);
+
+        if ($excludeSelf) {
+            $query->where('id', '!=', $discount->id);
+        }
+
+        // pivot tablodan eşleşen target_id'lere bakıyoruz
+        $targetIds = $discount->targets->pluck('target_id')->toArray();
+        $query->whereHas('targets', function($q) use($targetIds, $discount) {
+            $q->where('target_type', $discount->target_type)
+              ->whereIn('target_id', $targetIds);
+        });
+
+        // Burada en yüksek önceliği alıyoruz
+        $maxPriority = (int) $query->max('priority');
+
+        // Yeni indirim önceliği en yüksek veya eşit mi?
+        return $discount->priority >= $maxPriority;
+    }
+
 
     public function applyDiscount(ProductDiscount $discount): void
     {
@@ -221,9 +259,11 @@ class DiscountService
             $priceRow = $product->latestPrice;
             if (!$priceRow)
                 continue;
-            $basePrice = $priceRow->price_discount > 0 ? $priceRow->price_discount : $priceRow->price;
+            $basePrice     = $priceRow->price_discount > 0 ? $priceRow->price_discount : $priceRow->price;
             $newDiscounted = $this->calculateDiscountedPrice($basePrice, $discount);
 
+            // Tarih aralığına göre closed çekilmeli.
+            // Yani eğer indirimin tarihi hemen şu an başlıyorsa is_closed true olmalı ancak hemen başlamıyorsa bu işlemi command yapmalı.
             ProductPriceHistory::where('product_id', $product->id)
                                ->where('is_closed', false)
                                ->update([
@@ -280,21 +320,27 @@ class DiscountService
         return $this->model::query()
                            ->where('discount_start', '<=', $now)
                            ->where('discount_end', '>=', $now)
-                           ->whereHas('targets', function ($q) use ($product) {
-                               $q->where(function ($sub) use ($product) {
-                                   $sub->where(function ($cond) use ($product) {
+                           ->whereHas('targets', function ($q) use ($product)
+                           {
+                               $q->where(function ($sub) use ($product)
+                               {
+                                   $sub->where(function ($cond) use ($product)
+                                   {
                                        $cond->where('target_type', 'product')
                                             ->where('target_id', $product->id);
                                    })
-                                       ->orWhere(function ($cond) use ($product) {
+                                       ->orWhere(function ($cond) use ($product)
+                                       {
                                            $cond->where('target_type', 'category')
                                                 ->whereIn('target_id', $product->categories->pluck('id'));
                                        })
-                                       ->orWhere(function ($cond) use ($product) {
+                                       ->orWhere(function ($cond) use ($product)
+                                       {
                                            $cond->where('target_type', 'brand')
                                                 ->where('target_id', $product->brand_id);
                                        })
-                                       ->orWhere(function ($cond) use ($product) {
+                                       ->orWhere(function ($cond) use ($product)
+                                       {
                                            $cond->where('target_type', 'tag')
                                                 ->whereIn('target_id', $product->tags->pluck('id'));
                                        });
@@ -310,5 +356,76 @@ class DiscountService
         return $this;
     }
 
+    /**
+     * @return array{discount: ProductDiscount,  message: string|null}
+     * @throws Throwable
+     */
+    public function changeStatus(): array
+    {
+        // 1) Toggle durumu (aktif <-> pasif)
+        $newStatus = !($this->model->is_active);
+        // -----------------------------
+        // 2) Aktifleniyorsa: çakışma ve tarih kontrolleri
+        // -----------------------------
+        \Log::info("Bilgi: " . intval($newStatus));
+        \Log::info("Bilgi2: " . $this->model->name);
+        \Log::info("Bilgi3: " . strval($this->model->is_active));
+        if ($newStatus) {
+            // Tarih kontrolü Tarih kontrolü
+            $now   = now();
+            $start = $this->model->discount_start;
+            $end   = $this->model->discount_end;
 
+            if ($now->lt($start)) {
+                throw ValidationException::withMessages([
+                                                            'discount' => [
+                                                                "Bu indirim {$start->format('d.m.Y H:i')} tarihinde başlayacak. Şu an aktif edemezsiniz."
+                                                            ]
+                                                        ]);
+            }
+
+            if ($now->gt($end)) {
+                throw ValidationException::withMessages([
+                                                            'discount' => [
+                                                                "Bu indirim {$end->format('d.m.Y H:i')} tarihinde sona ermiş. Süre dolduğu için tekrar aktif edemezsiniz."
+                                                            ]
+                                                        ]);
+            }
+
+
+            // Öncelik kontrolü (çakışma dahil)
+            $shouldApply = $this->shouldApplyDiscount($this->model, true);
+
+            if (! $shouldApply) {
+                $this->message =
+                    "Daha yüksek öncelikli başka indirim(ler) olduğu için fiyat tarihçesine yansıtılmadı.";
+            }
+
+
+        }
+
+        // -----------------------------
+        // 3) Durum güncelleme
+        // -----------------------------
+        $this->model->update(['is_active' => $newStatus]);
+
+        // -----------------------------
+        // 4) History’e yansıtma
+        // -----------------------------
+        if ($newStatus) {
+            // 4.1) Aktive alındığında indirimi uygula
+            if (! empty($shouldApply)) {
+                $this->applyDiscount($this->model);
+            }
+        } else {
+            // 4.2) Pasife alındığında revert işlemi
+            $historyService = app()->make(ProductPriceHistoryService::class);
+            $historyService->revertDiscount($this->model);
+        }
+
+        return [
+            'discount' => $this->model,
+            'message' => $this->message
+        ];
+    }
 }

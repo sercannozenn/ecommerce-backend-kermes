@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProductDiscount extends Model
 {
-    use HasFactory, SoftDeletes;
+    use SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -27,8 +27,8 @@ class ProductDiscount extends Model
         'is_active'       => 'boolean',
         'priority'        => 'integer',
         'discount_amount' => 'float',
-        'discount_start'      => 'datetime',
-        'discount_end'        => 'datetime',
+        'discount_start'  => 'datetime',
+        'discount_end'    => 'datetime',
     ];
 
     protected $dates = ['deleted_at'];

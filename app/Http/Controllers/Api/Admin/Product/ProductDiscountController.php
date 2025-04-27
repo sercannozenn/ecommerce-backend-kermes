@@ -5,23 +5,15 @@ namespace App\Http\Controllers\Api\Admin\Product;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Product\ProductDiscountRequest;
 use App\Http\Requests\Admin\Product\ProductDiscountUpdateRequest;
-use App\Http\Requests\Admin\Product\ProductStoreRequest;
-use App\Http\Requests\Admin\Product\ProductUpdateRequest;
-
-use App\Models\Product;
 use App\Models\ProductDiscount;
-use App\Services\BrandServices\BrandService;
-use App\Services\CategoryServices\CategoryService;
 use App\Services\ProductServices\DiscountService;
-use App\Services\ProductServices\ProductService;
-use App\Services\TagServices\TagService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductDiscountController extends Controller
 {
-    public function __construct(private DiscountService $discountService)
+    public function __construct(protected DiscountService $discountService)
     {
     }
     public function searchTargets(Request $request)
@@ -54,10 +46,7 @@ class ProductDiscountController extends Controller
     {
         $discount = $this->discountService->store($request->validated());
 
-        return response()->json([
-                                    'success' => true,
-                                    'data' => $discount,
-                                ]);
+        return $this->success($discount);
     }
 
     public function update(ProductDiscountUpdateRequest $request, ProductDiscount $productDiscount): JsonResponse
@@ -95,6 +84,17 @@ class ProductDiscountController extends Controller
         unset($productDiscount->targets); // ilişkiyi sıfırla
         $productDiscount->targets = $targets;
         return $this->success($productDiscount);
+    }
+
+    /**
+     * @throws \Throwable
+     */
+    public function changeStatus(ProductDiscount $product_discount) {
+        $updated  = $this->discountService
+            ->setDiscount($product_discount)
+            ->changeStatus();
+
+        return $this->success($updated);
     }
 
 }

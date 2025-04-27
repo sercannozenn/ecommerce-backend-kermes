@@ -42,7 +42,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
 
     Route::get('product-discount/search-targets', [ProductDiscountController::class, 'searchTargets']);
     Route::resource('product-discount', ProductDiscountController::class);
-
+    Route::put('product-discount/{product_discount}/change-status', [ProductDiscountController::class, 'changeStatus']);
 });
 
 Route::get('/sliders', [\App\Http\Controllers\Api\Front\Slider\SliderController::class, 'index']);
