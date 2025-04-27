@@ -97,4 +97,11 @@ class ProductDiscountController extends Controller
         return $this->success($updated);
     }
 
+    public function getAffectedProducts(ProductDiscount $productDiscount)
+    {
+        $products = $this->discountService->getAffectedProducts($productDiscount);
+
+        return $this->success($products);
+    }
+
 }

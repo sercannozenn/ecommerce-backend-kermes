@@ -262,6 +262,21 @@ class DiscountService
             $basePrice     = $priceRow->price_discount > 0 ? $priceRow->price_discount : $priceRow->price;
             $newDiscounted = $this->calculateDiscountedPrice($basePrice, $discount);
 
+            $last = ProductPriceHistory::query()
+                                       ->where('product_id', $product->id)
+                                       ->where('is_closed', false)
+                                       ->orderBy('valid_from', 'desc')
+                                       ->first();
+
+            if ($last
+                && $last->calculated_discount_id === $discount->id
+                && (float)$last->price === (float)$basePrice
+                && (float)$last->price_discount === (float)$newDiscounted
+            ) {
+                // Aynı discount_id, price ve price_discount ise atla
+                continue;
+            }
+
             // Tarih aralığına göre closed çekilmeli.
             // Yani eğer indirimin tarihi hemen şu an başlıyorsa is_closed true olmalı ancak hemen başlamıyorsa bu işlemi command yapmalı.
             ProductPriceHistory::where('product_id', $product->id)
@@ -427,5 +442,52 @@ class DiscountService
             'discount' => $this->model,
             'message' => $this->message
         ];
+    }
+
+    public function getAffectedProducts(ProductDiscount $discount): \Illuminate\Support\Collection
+    {
+        $targetIds = $discount->targets->pluck('target_id')->toArray();
+        $query     = Product::query();
+
+        switch ($discount->target_type) {
+            case 'product':
+                $query->whereIn('id', $targetIds);
+                break;
+            case 'category':
+                $query->whereHas('categories', fn($q) =>
+                $q->whereIn('categories.id', $targetIds)
+                );
+                break;
+            case 'tag':
+                $query->whereHas('tags', fn($q) =>
+                $q->whereIn('tags.id', $targetIds)
+                );
+                break;
+            case 'brand':
+                $query->whereIn('brand_id', $targetIds);
+                break;
+            default:
+                return collect();
+        }
+
+        return $query->get()->map(function (Product $product) use ($discount) {
+            $histories = ProductPriceHistory::query()
+                                            ->where('product_id', $product->id)
+                                            ->where('calculated_discount_id', $discount->id)
+                                            ->orderBy('valid_from')
+                                            ->get(['price','price_discount','valid_from','valid_until'])
+                                            ->map(fn($h) => [
+                                                'price'          => round($h->price, 2),
+                                                'price_discount' => round($h->price_discount, 2),
+                                                'from'           => $h->valid_from->toDateTimeString(),
+                                                'until'          => $h->valid_until?->toDateTimeString(),
+                                            ]);
+
+            return [
+                'id'        => $product->id,
+                'name'      => $product->name,
+                'histories' => $histories,
+            ];
+        });
     }
 }

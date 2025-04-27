@@ -26,7 +26,8 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
     Route::get('/product/filters-data', [ProductController::class, 'getFiltersData']);
     Route::resource('product', ProductController::class);
     Route::put('/product/{id}/change-status', [ProductController::class, 'changeStatus']);
-
+    Route::get('/product/{product}/price-history', [ProductController::class, 'priceHistory']
+    );
     Route::resource('tag', TagController::class);
 
     Route::resource('brand', BrandController::class);
@@ -43,6 +44,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
     Route::get('product-discount/search-targets', [ProductDiscountController::class, 'searchTargets']);
     Route::resource('product-discount', ProductDiscountController::class);
     Route::put('product-discount/{product_discount}/change-status', [ProductDiscountController::class, 'changeStatus']);
+    Route::get('product-discount/{product_discount}/affected-products', [ProductDiscountController::class, 'getAffectedProducts']);
 });
 
 Route::get('/sliders', [\App\Http\Controllers\Api\Front\Slider\SliderController::class, 'index']);

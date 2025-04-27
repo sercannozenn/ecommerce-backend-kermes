@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductDiscount;
 use App\Models\ProductPrice;
 use App\Models\ProductPriceHistory;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -30,6 +31,32 @@ class ProductPriceHistoryService
         DB::beginTransaction();
         try {
             // Mevcut aktif geçmişi kapat
+
+            $basePrice = $price->price_discount > 0 ? $price->price_discount : $price->price;
+
+            // Geçerli indirimi hesapla
+            $discounted = $this->discountService->getDiscountedPriceAsFloat($product, $basePrice);
+            $activeDiscount = $this->discountService->getActiveDiscount($product);
+            $discountId     = $activeDiscount?->id;
+
+
+            $last = $this->model::query()
+                                ->where('product_id', $product->id)
+                                ->where('is_closed', false)
+                                ->orderBy('valid_from', 'desc')
+                                ->first();
+
+            // 4) Eğer son kayıt aynı indirim ve fiyat bilgilerine sahipse, hiçbir şey yapma
+            if (
+                $last
+                && (float)$last->price === (float)$basePrice
+                && (float)$last->price_discount === (float)$discounted
+                && $last->calculated_discount_id === $discountId
+            ) {
+                DB::rollBack();
+                return $last;
+            }
+
             $this->model::query()
                         ->where('product_id', $product->id)
                         ->where('is_closed', false)
@@ -38,11 +65,6 @@ class ProductPriceHistoryService
                                      'valid_until' => now(),
                                  ]);
 
-            $basePrice = $price->price_discount > 0 ? $price->price_discount : $price->price;
-
-            // Geçerli indirimi hesapla
-            $discounted = $this->discountService->getDiscountedPriceAsFloat($product, $basePrice);
-            $activeDiscount = $this->discountService->getActiveDiscount($product);
 
             // Yeni geçmiş kaydını oluştur
             $history = $this->model::create([
@@ -109,6 +131,23 @@ class ProductPriceHistoryService
             // aktif indirim veya baz fiyatı history’e ekliyor
             $this->createHistory($product, $priceRow);
         }
+    }
+
+    public function getHistory(Product $product): Collection
+    {
+        return $this->model::query()
+                           ->where('product_id', $product->id)
+                           ->orderBy('valid_from')
+            // İndirimin adını almak için eager load
+                           ->with('discount:id,name')
+                           ->get(['price','price_discount','calculated_discount_id','valid_from','valid_until'])
+                           ->map(fn($h) => [
+                               'price'            => round($h->price, 2),
+                               'price_discount'   => round($h->price_discount, 2),
+                               'discount_name'    => $h->discount?->name ?? 'İndirimsiz',
+                               'from'             => $h->valid_from->toDateTimeString(),
+                               'until'            => $h->valid_until?->toDateTimeString(),
+                           ]);
     }
 
 

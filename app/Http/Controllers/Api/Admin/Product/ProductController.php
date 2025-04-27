@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\Product\ProductUpdateRequest;
 use App\Models\Product;
 use App\Services\BrandServices\BrandService;
 use App\Services\CategoryServices\CategoryService;
+use App\Services\ProductServices\ProductPriceHistoryService;
 use App\Services\ProductServices\ProductService;
 use App\Services\TagServices\TagService;
 use Exception;
@@ -121,6 +122,12 @@ class ProductController extends Controller
         } catch (Exception $e) {
             return $this->error(500, ['error' => 'Ürün durumu değiştirilemedi.']);
         }
+    }
+
+    public function priceHistory(Product $product, ProductPriceHistoryService $productPriceHistoryService)
+    {
+        $history = $productPriceHistoryService->getHistory($product);
+        return $this->success($history);
     }
 
 }
