@@ -7,6 +7,7 @@ use App\Models\ProductDiscount;
 use App\Models\ProductPrice;
 use App\Models\ProductPriceHistory;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -69,6 +70,10 @@ class ProductPriceHistoryService
                                  ]);
 
 
+
+            $userId = Auth::check()
+                ? Auth::id()
+                : -1;
             // Yeni geçmiş kaydını oluştur
             $history = $this->model::create([
                                                 'product_id'             => $product->id,
@@ -79,7 +84,7 @@ class ProductPriceHistoryService
                                                 'is_closed'              => false,
                                                 'valid_from'             => now(),
                                                 'valid_until'            => null,
-                                                'updated_by'             => auth()->id(),
+                                                'updated_by'             => $userId,
                                                 'reason'                 => $reason,
                                             ]);
 
@@ -155,7 +160,7 @@ class ProductPriceHistoryService
                                'discount_name'    => $h->discount?->name ?? 'İndirimsiz',
                                'from'             => $h->valid_from->toDateTimeString(),
                                'until'            => $h->valid_until?->toDateTimeString(),
-                               'updated_by'       => $h->updatedBy?->name,
+                               'updated_by'       => $h->updated_by === -1 ? 'Sistem' : ($h->updatedBy?->name ?? 'Bilinmiyor'),
                                'reason'           => $h->reason,
                            ]);
     }

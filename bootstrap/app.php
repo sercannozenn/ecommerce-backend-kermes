@@ -14,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->use([\Illuminate\Http\Middleware\HandleCors::class]);
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule->command('discounts:expire')
+                 ->everyMinute();
+//                 ->dailyAt('01:00');
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
