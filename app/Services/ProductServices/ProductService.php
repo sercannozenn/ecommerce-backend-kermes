@@ -4,13 +4,15 @@ namespace App\Services\ProductServices;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\BaseService;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
-class ProductService
+class ProductService extends BaseService
 {
     public function __construct(private Product $model)
     {
@@ -181,8 +183,7 @@ class ProductService
      */
     public function store(array $data): Product
     {
-        DB::beginTransaction();
-        try {
+        return $this->transaction(function() use ($data) {
             $product = $this->model::create($data);
             $product->categories()->sync($data['category_ids'] ?? []);
             $product->tags()->sync($data['tag_ids'] ?? []);
@@ -212,37 +213,33 @@ class ProductService
                 $product->variants()->sync($data['variants']);
             }
 
-            DB::commit();
             return $product;
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
+        });
     }
 
     /**
      * @throws Exception
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function update(array $data): self
     {
-        DB::beginTransaction();
-        try {
+        return $this->transaction(function() use ($data) {
             $this->model->update($data);
             $this->model->categories()->sync($data['category_ids'] ?? []);
             $this->model->tags()->sync($data['tag_ids'] ?? []);
 
             // Son eklenen fiyat kaydını al
-            $lastPrice = $this->model->prices()->latest('created_at')->first();
-            $newPrice  = $data['price'] ?? null;
+            $lastPrice   = $this->model->prices()->latest('created_at')->first();
+            $newPrice    = $data['price'] ?? null;
             $newDiscount = $data['price_discount'] ?? null;
+
             // Yeni fiyat, son kaydedilen fiyattan farklıysa yeni kayıt oluştur
             if (!empty($data['price']) && (
                     !$lastPrice ||
                     $lastPrice->price != $data['price'] ||
                     $lastPrice->price_discount != ($data['price_discount'] ?? null)
                 )) {
-                \Log::info('İndirimli Fİyat:  ' . $newDiscount . ' - ' . $newPrice );
+                \Log::info('İndirimli Fİyat:  ' . $newDiscount . ' - ' . $newPrice);
 
                 $this->savePriceAndHistory($this->model, $newPrice, $newDiscount, 'Ürün güncellendi ve fiyatı değiştirildi.');
             }
@@ -253,13 +250,12 @@ class ProductService
                             ->whereNotIn('id', $data['existing_images'])
                             ->each(function ($image)
                             {
-                                if ($image->image_path && Storage::disk('public')->exists($image->image_path))
-                                {
+                                if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
                                     Storage::disk('public')->delete($image->image_path);
                                 }
                                 $image->delete();
                             });
-//                            ->delete();
+                //                            ->delete();
             }
             // Önce tüm görsellerin featured durumunu false yap
             $this->model->images()->update(['is_featured' => false]);
@@ -282,9 +278,9 @@ class ProductService
                         $isFeatured = $data['featured_image'] === $data['image_ids'][$index];
 
                         $this->model->images()->create([
-                                                       'image_path'  => $path,
-                                                       'is_featured' => $isFeatured
-                                                   ]);
+                                                           'image_path'  => $path,
+                                                           'is_featured' => $isFeatured
+                                                       ]);
                     }
                 }
             }
@@ -294,12 +290,32 @@ class ProductService
                 $this->model->variants()->sync($data['variants']);
             }
 
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-        return $this;
+            return $this;
+        });
+    }
+    /**
+     * @throws Exception
+     * @throws Throwable
+     */
+    public function delete(): bool|null
+    {
+        return $this->transaction(function()
+        {
+            $this->model->categories()->detach();
+            $this->model->tags()->detach();
+            $this->model->prices()->delete();
+            $this->model->discounts()->delete();
+            // Görsellerin dosyalarını da sil
+            foreach ($this->model->images as $image) {
+                if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
+                    Storage::disk('public')->delete($image->image_path);
+                }
+            }
+            $this->model->images()->delete();
+            $this->model->variants()->detach();
+
+            return $this->model->delete();
+        });
     }
 
     /**
@@ -315,34 +331,7 @@ class ProductService
 
         app(ProductPriceHistoryService::class)->createHistory($product, $newPrice, $reason);
     }
-    /**
-     * @throws Exception
-     * @throws Throwable
-     */
-    public function delete(): bool|null
-    {
-        DB::beginTransaction();
-        try {
-            $this->model->categories()->detach();
-            $this->model->tags()->detach();
-            $this->model->prices()->delete();
-            $this->model->discounts()->delete();
-            // Görsellerin dosyalarını da sil
-            foreach ($this->model->images as $image) {
-                if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
-                    Storage::disk('public')->delete($image->image_path);
-                }
-            }
-            $this->model->images()->delete();
-            $this->model->variants()->detach();
-            $result = $this->model->delete();
-            DB::commit();
-            return $result;
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-    }
+
 
     public function setProduct(Product $product): self
     {

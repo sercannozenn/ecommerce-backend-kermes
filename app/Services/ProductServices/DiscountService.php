@@ -98,16 +98,10 @@ class DiscountService
     }
 
     /**
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function store(array $data): ProductDiscount
     {
-//        if ($this->hasConflict($data)) {
-//            throw ValidationException::withMessages([
-//                                                        'targets' => ['Seçilen hedef(ler) için aynı tarih aralığında tanımlı başka bir indirim zaten mevcut.']
-//                                                    ]);
-//        }
-
         DB::beginTransaction();
 
         try {
@@ -146,12 +140,6 @@ class DiscountService
      */
     public function update(int $id, array $data): ProductDiscount
     {
-//        if ($this->hasConflict($data, $id)) {
-//            throw ValidationException::withMessages([
-//                                                        'targets' => ['Seçilen hedef(ler) için aynı tarih aralığında tanımlı başka bir indirim zaten mevcut.']
-//                                                    ]);
-//        }
-
         DB::beginTransaction();
 
         try {
@@ -229,7 +217,6 @@ class DiscountService
         return $discount->priority >= $maxPriority;
     }
 
-
     /**
      * @throws Throwable
      */
@@ -283,26 +270,7 @@ class DiscountService
 
             // Tarih aralığına göre closed çekilmeli.
             // Yani eğer indirimin tarihi hemen şu an başlıyorsa is_closed true olmalı ancak hemen başlamıyorsa bu işlemi command yapmalı.
-//            ProductPriceHistory::where('product_id', $product->id)
-//                               ->where('is_closed', false)
-//                               ->update([
-//                                            'is_closed'   => true,
-//                                            'valid_until' => now(),
-//                                        ]);
-
-            // Tarih aralığına göre önceki açık kayıtları kapat + yeni kayıt atma atla mantığı
             app(ProductPriceHistoryService::class)->createHistory($product, $priceRow, $reason);
-
-//            ProductPriceHistory::create([
-//                                            'product_id'             => $product->id,
-//                                            'product_price_id'       => $priceRow->id,
-//                                            'price'                  => $basePrice,
-//                                            'price_discount'         => $newDiscounted,
-//                                            'calculated_discount_id' => $discount->id,
-//                                            'is_closed'              => false,
-//                                            'valid_from'             => $discount->discount_start,
-//                                            'valid_until'            => $discount->discount_end,
-//                                        ]);
         }
     }
 
