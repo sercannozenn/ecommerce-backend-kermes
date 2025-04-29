@@ -156,7 +156,7 @@ class ProductService extends BaseService
 
     public function getById(int $id): Product
     {
-        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants'])->findOrFail($id);
+        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants', 'sizes'])->findOrFail($id);
     }
 
     public function getByCategoryId(int $categoryId): Collection
@@ -211,6 +211,11 @@ class ProductService extends BaseService
             // Ürün varyantlarını ekle
             if (!empty($data['variants'])) {
                 $product->variants()->sync($data['variants']);
+            }
+
+            // Bedenleri senkronize et
+            if (!empty($data['sizes'])) {
+                $this->syncSizes($data['sizes']);
             }
 
             return $product;
@@ -288,6 +293,11 @@ class ProductService extends BaseService
             // Ürün varyantlarını güncelle
             if (!empty($data['variants'])) {
                 $this->model->variants()->sync($data['variants']);
+            }
+
+            // update() içinde: “sizes” alanı gönderildiyse, boş da olsa sync et
+            if (array_key_exists('sizes', $data)) { // alan var mı kontrolü; [] gönderildiyse de çalışır
+                $this->syncSizes($data['sizes']);
             }
 
             return $this;
@@ -394,4 +404,58 @@ class ProductService extends BaseService
                            ->orderByDesc('id')
                            ->paginate($limit);
     }
+
+    /**
+     * Gelen newSizes dizisini product_size_stocks ile eşitler:
+     * - Yeni beden oluşturur
+     * - Var olanı günceller ve restore eder
+     * - Listede olmayanları soft-delete eder
+     */
+    protected function syncSizes(array $newSizes): void
+    {
+        // Mevcut kayıtları silinmiş + silinmemiş olarak çek
+        $existingSizes = $this->model
+            ->sizes()
+            ->withTrashed()
+            ->get();
+
+        // Yeni gelen bedenler üzerinden döngü
+        collect($newSizes)->each(function ($newSize) use ($existingSizes) {
+            $sizeKey = trim($newSize['size']);
+            $stock   = (int) $newSize['stock'];
+            $alert   = (int) $newSize['stock_alert'];
+
+            // first() içindeki arrow function yerine normal closure
+            $existingSize = $existingSizes->first(function ($e) use ($sizeKey) {
+                return $e->size === $sizeKey;
+            });
+
+            if ($existingSize) {
+                // Güncelle ve gerekirse restore et
+                $existingSize->update([
+                                          'stock'       => $stock,
+                                          'stock_alert' => $alert,
+                                      ]);
+                if ($existingSize->trashed()) {
+                    $existingSize->restore();
+                }
+            } else {
+                // Yeni kayıt
+                $this->model->sizes()->create([
+                                                  'size'        => $sizeKey,
+                                                  'stock'       => $stock,
+                                                  'stock_alert' => $alert,
+                                              ]);
+            }
+        });
+
+        // İstekte olmayan kayıtları soft-delete et
+        $toDelete = $existingSizes->filter(function ($existingSize) use ($newSizes) {
+            return ! collect($newSizes)->pluck('size')->contains($existingSize->size);
+        });
+
+        $toDelete->each->delete();
+    }
+
+
 }

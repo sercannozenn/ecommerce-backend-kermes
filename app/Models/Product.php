@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @method static create(array $data)
  */
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -91,5 +92,17 @@ class Product extends Model
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    public function sizes(): HasMany
+    {
+        return $this->hasMany(ProductSizeStock::class);
+    }
+
+
+    protected static function booted(): void
+    {
+        static::deleting(fn($product) => $product->sizes()->delete());
+        static::restoring(fn($product) => $product->sizes()->withTrashed()->restore());
     }
 }

@@ -28,27 +28,32 @@ class ProductUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'              => ['required', 'string', 'max:255'],
-            'slug'              => ['required', 'string', 'max:255', 'unique:products,slug,' . $this->product->id],
-            'short_description' => ['nullable', 'string'],
-            'long_description'  => ['nullable', 'string'],
-            'price'             => ['required', 'numeric', 'min:0'],
-            'price_discount'    => ['nullable', 'numeric', 'min:0', 'lt:price'],
-            'is_active'         => ['boolean'],
-            'stock'             => ['required', 'integer', 'min:0'],
-            'stock_alert_limit' => ['required', 'integer', 'min:10'],
-            'category_ids'      => ['required', 'array', 'min:1'],
-            'category_ids.*'    => ['exists:categories,id'],
-            'tag_ids'           => ['array', 'sometimes'],
-            'tag_ids.*'         => ['exists:tags,id'],
-            'images'            => ['sometimes', 'array'],
-            'existing_images'   => ['sometimes', 'array', 'nullable'],
-            'existing_images.*' => ['exists:product_images,id'],
-            'images.*'          => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'image_ids'         => ['sometimes', 'array', 'nullable'],
-            'image_ids.*'       => ['sometimes', 'string'],
-            'featured_image'    => ['required', 'string'],
-            'brand_id'          => ['nullable', 'sometimes', 'exists:brands,id'],
+            'name'                => ['required', 'string', 'max:255'],
+            'slug'                => ['required', 'string', 'max:255', 'unique:products,slug,' . $this->product->id],
+            'short_description'   => ['nullable', 'string'],
+            'long_description'    => ['nullable', 'string'],
+            'price'               => ['required', 'numeric', 'min:0'],
+            'price_discount'      => ['nullable', 'numeric', 'min:0', 'lt:price'],
+            'is_active'           => ['boolean'],
+            'category_ids'        => ['required', 'array', 'min:1'],
+            'category_ids.*'      => ['exists:categories,id'],
+            'tag_ids'             => ['array', 'sometimes'],
+            'tag_ids.*'           => ['exists:tags,id'],
+            'images'              => ['sometimes', 'array'],
+            'existing_images'     => ['sometimes', 'array', 'nullable'],
+            'existing_images.*'   => ['exists:product_images,id'],
+            'images.*'            => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'image_ids'           => ['sometimes', 'array', 'nullable'],
+            'image_ids.*'         => ['sometimes', 'string'],
+            'featured_image'      => ['required', 'string'],
+            'brand_id'            => ['nullable', 'sometimes', 'exists:brands,id'],
+            'sizes'               => 'sometimes|array',
+            'sizes.*.size'        => 'required_with:sizes|string|max:50',// 'required_with:sizes' -> bu alanlar yalnızca 'sizes' gönderilmişse zorunlu
+            'sizes.*.stock'       => 'required_with:sizes|integer|min:0',
+            'sizes.*.stock_alert' => 'required_with:sizes|integer|min:0',
+            'keywords'            => ['nullable', 'sometimes', 'string'],
+            'seo_description'     => ['nullable', 'sometimes', 'string'],
+            'author'              => ['nullable', 'sometimes', 'string'],
         ];
     }
 
@@ -61,7 +66,8 @@ class ProductUpdateRequest extends FormRequest
                          'tag_ids'         => json_decode($this->tag_ids, true),
                          'existing_images' => json_decode($this->existing_images, true),
                          'image_ids'       => json_decode($this->image_ids, true),
-//                         'brand_id'        => $this->brand_id === 'null' ? null : $this->brand_id,
+                         'sizes'           => json_decode($this->sizes, true),
+                         //                         'brand_id'        => $this->brand_id === 'null' ? null : $this->brand_id,
                      ]);
     }
 

@@ -23,29 +23,30 @@ class ProductStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'              => ['required', 'string', 'max:255'],
-            'slug'              => ['required', 'string', 'max:255', 'unique:products,slug'],
-            'short_description' => ['nullable', 'string'],
-            'long_description'  => ['nullable', 'string'],
-            'price'             => ['required', 'numeric', 'min:0'],
-            'price_discount'    => ['nullable', 'numeric', 'min:0', 'lt:price'],
-            'is_active'         => ['boolean'],
-            'stock'             => ['required', 'integer', 'min:0'],
-            'stock_alert_limit' => ['required', 'integer', 'min:10'],
-            'category_ids'      => ['required', 'array', 'min:1'],
-            'category_ids.*'    => ['exists:categories,id'],
-            'tag_ids'           => ['array'],
-            'tag_ids.*'         => ['exists:tags,id'],
-            'images'            => ['array'],
-            'images.*'          => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'image_ids'         => ['required', 'array'],
-            'image_ids.*'       => ['required', 'string'],
-            'featured_image'    => ['required', 'string'],
-            'brand_id'          => ['nullable', 'exists:brands,id'],
-
-            'keywords'        => ['nullable', 'sometimes', 'string'],
-            'seo_description' => ['nullable', 'sometimes', 'string'],
-            'author'          => ['nullable', 'sometimes', 'string'],
+            'name'                => ['required', 'string', 'max:255'],
+            'slug'                => ['required', 'string', 'max:255', 'unique:products,slug'],
+            'short_description'   => ['nullable', 'string'],
+            'long_description'    => ['nullable', 'string'],
+            'price'               => ['required', 'numeric', 'min:0'],
+            'price_discount'      => ['nullable', 'numeric', 'min:0', 'lt:price'],
+            'is_active'           => ['boolean'],
+            'category_ids'        => ['required', 'array', 'min:1'],
+            'category_ids.*'      => ['exists:categories,id'],
+            'tag_ids'             => ['array'],
+            'tag_ids.*'           => ['exists:tags,id'],
+            'images'              => ['array'],
+            'images.*'            => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'image_ids'           => ['required', 'array'],
+            'image_ids.*'         => ['required', 'string'],
+            'featured_image'      => ['required', 'string'],
+            'brand_id'            => ['nullable', 'exists:brands,id'],
+            'sizes'               => 'sometimes|array',
+            'sizes.*.size'        => 'required_with:sizes|string|max:50',// 'required_with:sizes' -> bu alanlar yalnızca 'sizes' gönderilmişse zorunlu
+            'sizes.*.stock'       => 'required_with:sizes|integer|min:0',
+            'sizes.*.stock_alert' => 'required_with:sizes|integer|min:0',
+            'keywords'            => ['nullable', 'sometimes', 'string'],
+            'seo_description'     => ['nullable', 'sometimes', 'string'],
+            'author'              => ['nullable', 'sometimes', 'string'],
         ];
     }
 
@@ -56,6 +57,7 @@ class ProductStoreRequest extends FormRequest
                          'is_active'    => filter_var($this->is_active, FILTER_VALIDATE_BOOLEAN),
                          'category_ids' => json_decode($this->category_ids, true),
                          'tag_ids'      => json_decode($this->tag_ids, true),
+                         'sizes'        => json_decode($this->sizes, true),
                      ]);
     }
 
@@ -83,10 +85,6 @@ class ProductStoreRequest extends FormRequest
 
             'is_active.boolean' => 'Aktiflik durumu doğru formatta olmalıdır.',
 
-            'stock.required' => 'Stok bilgisi zorunludur.',
-            'stock.integer'  => 'Stok bilgisi sayısal olmalıdır.',
-            'stock.min'      => 'Stok miktarı 0 veya daha büyük olmalıdır.',
-
             'category_ids.array'    => 'Kategoriler dizi formatında olmalıdır.',
             'category_ids.required' => 'En az bir kategori seçilmelidir.',
             'category_ids.min'      => 'En az bir kategori seçilmelidir.',
@@ -100,14 +98,24 @@ class ProductStoreRequest extends FormRequest
             'images.*.mimes' => 'Resim formatı jpeg, png, jpg veya webp olmalıdır.',
             'images.*.max'   => 'Resim boyutu en fazla 2MB olabilir.',
 
-            'keywords.sometimes'       => 'Anahtar kelimeler alanı bazen gereklidir.',
-            'keywords.string'          => 'Anahtar kelimeler alanı metin olmalıdır.',
+            'sizes.array'                       => 'Beden bilgileri dizi formatında olmalı.',
+            'sizes.*.size.required_with'        => 'Her bedenin bir adı (size) olmalıdır.',
+            'sizes.*.size.string'               => 'Beden adı metin (string) olmalı.',
+            'sizes.*.stock.required_with'       => 'Her beden için stok girilmelidir.',
+            'sizes.*.stock.integer'             => 'Stok sayısı tam sayı olmalı.',
+            'sizes.*.stock.min'                 => 'Stok en az 0 olabilir.',
+            'sizes.*.stock_alert.required_with' => 'Her beden için stok uyarı eşiği girilmeli.',
+            'sizes.*.stock_alert.integer'       => 'Stok uyarı eşiği tam sayı olmalı.',
+            'sizes.*.stock_alert.min'           => 'Stok uyarı eşiği en az 0 olabilir.',
 
-            'seo_description.sometimes'=> 'SEO açıklaması alanı bazen gereklidir.',
-            'seo_description.string'   => 'SEO açıklaması alanı metin olmalıdır.',
+            'keywords.sometimes' => 'Anahtar kelimeler alanı bazen gereklidir.',
+            'keywords.string'    => 'Anahtar kelimeler alanı metin olmalıdır.',
 
-            'author.sometimes'         => 'Yazar alanı bazen gereklidir.',
-            'author.string'            => 'Yazar alanı metin olmalıdır.',
+            'seo_description.sometimes' => 'SEO açıklaması alanı bazen gereklidir.',
+            'seo_description.string'    => 'SEO açıklaması alanı metin olmalıdır.',
+
+            'author.sometimes' => 'Yazar alanı bazen gereklidir.',
+            'author.string'    => 'Yazar alanı metin olmalıdır.',
         ];
     }
 }
