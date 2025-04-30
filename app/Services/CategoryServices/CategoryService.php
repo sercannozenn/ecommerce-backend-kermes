@@ -66,6 +66,19 @@ class CategoryService
         return $this->model->with(['children', 'tags'])->findOrFail($id);
     }
 
+    public function getSubcategoriesActiveBySlug(string $slug): Collection
+    {
+        // Parent kategori
+        $parent = $this->model::query()
+                              ->with('childrenActive')
+                              ->whereHas('childrenActive')
+                              ->where('slug', $slug)
+                              ->where('is_active', true)
+                              ->firstOrFail();
+
+        return $parent->childrenActive;
+    }
+
     public function store(array $data): Category|array
     {
         $category = $this->model::create($data);

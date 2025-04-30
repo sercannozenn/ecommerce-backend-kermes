@@ -156,7 +156,7 @@ class ProductService extends BaseService
 
     public function getById(int $id): Product
     {
-        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants', 'sizes'])->findOrFail($id);
+        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants', 'stoc'])->findOrFail($id);
     }
 
     public function getByCategoryId(int $categoryId): Collection
