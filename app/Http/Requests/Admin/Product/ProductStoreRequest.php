@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Admin\Product;
 
+use App\Enums\Gender;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProductStoreRequest extends FormRequest
 {
@@ -47,6 +49,8 @@ class ProductStoreRequest extends FormRequest
             'keywords'            => ['nullable', 'sometimes', 'string'],
             'seo_description'     => ['nullable', 'sometimes', 'string'],
             'author'              => ['nullable', 'sometimes', 'string'],
+            'gender'              => ['nullable', Rule::in(array_column(Gender::cases(), 'value'))],
+
         ];
     }
 
@@ -116,6 +120,9 @@ class ProductStoreRequest extends FormRequest
 
             'author.sometimes' => 'Yazar alanı bazen gereklidir.',
             'author.string'    => 'Yazar alanı metin olmalıdır.',
+
+            'gender.in' => 'Geçersiz cinsiyet değeri seçildi. Lütfen geçerli bir seçenek girin.',
+
         ];
     }
 }

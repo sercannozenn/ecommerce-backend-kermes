@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Admin\Product;
 
+use App\Enums\Gender;
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * @property string  $name
@@ -54,6 +56,8 @@ class ProductUpdateRequest extends FormRequest
             'keywords'            => ['nullable', 'sometimes', 'string'],
             'seo_description'     => ['nullable', 'sometimes', 'string'],
             'author'              => ['nullable', 'sometimes', 'string'],
+            'gender'              => ['nullable', Rule::in(array_column(Gender::cases(), 'value'))],
+
         ];
     }
 
@@ -111,6 +115,9 @@ class ProductUpdateRequest extends FormRequest
             'images.*.image' => 'Yüklenen dosya bir resim olmalıdır.',
             'images.*.mimes' => 'Resim formatı jpeg, png, jpg veya webp olmalıdır.',
             'images.*.max'   => 'Resim boyutu en fazla 2MB olabilir.',
+
+            'gender.in' => 'Geçersiz cinsiyet değeri seçildi. Lütfen geçerli bir seçenek girin.',
+
         ];
     }
 

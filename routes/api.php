@@ -27,8 +27,10 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
     Route::get('/product/filters-data', [ProductController::class, 'getFiltersData']);
     Route::resource('product', ProductController::class);
     Route::put('/product/{id}/change-status', [ProductController::class, 'changeStatus']);
-    Route::get('/product/{product}/price-history', [ProductController::class, 'priceHistory']
-    );
+    Route::get('/product/{product}/price-history', [ProductController::class, 'priceHistory']);
+    Route::get('/product/genders', [ProductController::class, 'getGenders']);
+
+
     Route::resource('tag', TagController::class);
 
     Route::resource('brand', BrandController::class);

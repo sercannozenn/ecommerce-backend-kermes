@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin\Product;
 
+use App\Enums\Gender;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Product\ProductStoreRequest;
 use App\Http\Requests\Admin\Product\ProductUpdateRequest;
@@ -33,7 +34,8 @@ class ProductController extends Controller
             $data       = [
                 'categories' => $categories,
                 'tags'       => $tags,
-                'brands'     => $brands
+                'brands'     => $brands,
+                'genders'    => Gender::options(),
             ];
             return $this->success($data);
 
@@ -54,6 +56,10 @@ class ProductController extends Controller
         return $this->success($products);
     }
 
+    public function getGenders()
+    {
+        return response()->json(array_column(Gender::cases(), 'value'));
+    }
     public function getFiltersData(CategoryService $categoryService, TagService $tagService, BrandService $brandService): JsonResponse
     {
         $data = [
@@ -75,14 +81,18 @@ class ProductController extends Controller
                 'categories' => $categories,
                 'tags'       => $tags,
                 'brands'     => $brands,
-                'product'    => $product
+                'product'    => $product,
+                'genders'    => Gender::options(),
             ];
             return $this->success($data);
         } catch (Exception $e) {
-            return $this->error(404, ['error' => 'Ürün bulunamadı.']);
+            return $this->error(404, ['error' => 'Ürün bulunamadı.', 'message' => $e->getMessage()]);
         }
     }
 
+    /**
+     * @throws \Throwable
+     */
     public function store(ProductStoreRequest $request): JsonResponse
     {
 //        try {

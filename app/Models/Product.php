@@ -20,25 +20,26 @@ class Product extends Model
     protected $fillable = [
         'name',
         'slug',
+        'gender',
         'brand_id',
         'short_description',
         'long_description',
         'is_active',
         'view_count',
-        'stock',
-        'stock_alert_limit',
         'keywords',
         'seo_description',
         'author'
     ];
 
     protected $appends = ['final_price'];
+
+    protected $casts = [
+        'gender' => \App\Enums\Gender::class,
+    ];
     public function getFinalPriceAttribute()
     {
         return $this->activePriceHistory?->price_discount ?? $this->latestPrice?->price_discount ?? $this->latestPrice?->price;
     }
-
-
 
     public function categories(): BelongsToMany
     {

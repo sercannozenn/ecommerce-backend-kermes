@@ -156,7 +156,7 @@ class ProductService extends BaseService
 
     public function getById(int $id): Product
     {
-        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants', 'stoc'])->findOrFail($id);
+        return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants', 'sizes'])->findOrFail($id);
     }
 
     public function getByCategoryId(int $categoryId): Collection
@@ -185,6 +185,7 @@ class ProductService extends BaseService
     {
         return $this->transaction(function() use ($data) {
             $product = $this->model::create($data);
+            $this->setProduct($product);
             $product->categories()->sync($data['category_ids'] ?? []);
             $product->tags()->sync($data['tag_ids'] ?? []);
 
@@ -425,7 +426,6 @@ class ProductService extends BaseService
             $stock   = (int) $newSize['stock'];
             $alert   = (int) $newSize['stock_alert'];
 
-            // first() içindeki arrow function yerine normal closure
             $existingSize = $existingSizes->first(function ($e) use ($sizeKey) {
                 return $e->size === $sizeKey;
             });
