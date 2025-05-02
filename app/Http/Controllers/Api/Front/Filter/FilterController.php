@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Front\Filter;
 
+use App\Enums\Gender;
 use App\Http\Controllers\Controller;
 use App\Services\BrandServices\BrandService;
 use App\Services\CategoryServices\CategoryService;
@@ -19,7 +20,7 @@ class FilterController extends Controller
     public function index(): JsonResponse
     {
         // 1) Filtre tipi (genders)
-        $genders    = $this->categoryService->getGenders();
+        $genders    = Gender::options();
 
         // 2) Tüm aktif alt kategoriler
         $categories = $this->categoryService->getActiveCategories();

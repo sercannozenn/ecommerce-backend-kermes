@@ -9,12 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 class CategoryService
 {
-    public function __construct(private Category $model) {}
+    public function __construct(private Category $model)
+    {
+    }
 
     public function getAll(): Collection
     {
         return $this->model->with(['parent', 'tags'])->get();
     }
+
     public function getPaginatedTags($page, $limit, $search, $sortBy, $sortOrder): array
     {
         $query = $this->model::query();
@@ -24,24 +27,21 @@ class CategoryService
                   ->orWhere('slug', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%")
                   ->orWhere('author', 'like', "%{$search}%")
-                  ->orWhereHas('parent', function ($q) use ($search){
+                  ->orWhereHas('parent', function ($q) use ($search)
+                  {
                       $q->where('name', 'like', "%{$search}%");
                   });
         }
         $query->leftJoin('categories as parent_categories', 'categories.parent_category_id', '=', 'parent_categories.id');
 
-        if ($sortBy === 'formatted_created_at')
-        {
+        if ($sortBy === 'formatted_created_at') {
             $sortBy = 'categories.created_at';
         }
 
-        if ($sortBy === 'parent_name')
-        {
+        if ($sortBy === 'parent_name') {
             // boş null olan kayıtlar da gelsin.
             $query->orderByRaw("COALESCE(parent_categories.name, 'ZZZ') $sortOrder");
-        }
-        else
-        {
+        } else {
             $query->orderBy($sortBy, $sortOrder);
         }
 
@@ -93,8 +93,8 @@ class CategoryService
     public function store(array $data): Category|array
     {
         $category = $this->model::create($data);
-        $tagIds = collect($data['tags'] ?? [])->pluck('value')->toArray();
-        $tags = Tag::query()->whereIn('id', $tagIds)->get();
+        $tagIds   = collect($data['tags'] ?? [])->pluck('value')->toArray();
+        $tags     = Tag::query()->whereIn('id', $tagIds)->get();
         $category->tags()->sync($tags);
 
         return $category;
@@ -125,7 +125,7 @@ class CategoryService
     {
 
         $this->model->update([
-            'is_active' => $isActive ?? !$this->model->is_active
+                                 'is_active' => $isActive ?? !$this->model->is_active
                              ]); // Durumu tersine çevir
 
         return $this->model;
@@ -134,8 +134,10 @@ class CategoryService
     public function getActiveCategories(): Collection
     {
         return $this->model::query()
+                           ->with('children')
                            ->select('id', 'name', 'slug', 'parent_category_id')
                            ->where('is_active', true)
+                           ->whereNull('parent_category_id')
                            ->orderBy('name')
                            ->get();
     }
