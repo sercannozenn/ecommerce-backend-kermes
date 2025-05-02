@@ -6,8 +6,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Services\BaseService;
 use Exception;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -30,12 +30,15 @@ class ProductService extends BaseService
         $tags             = $filter['tags'] ?? [];
         $categories       = $filter['categories'] ?? [];
         $brands           = $filter['brands'] ?? [];
+        $genders          = $filter['genders'] ?? [];
         $minPrice         = $filter['min_price'] ?? null;
         $maxPrice         = $filter['max_price'] ?? null;
         $minPriceDiscount = $filter['min_price_discount'] ?? null;
         $maxPriceDiscount = $filter['max_price_discount'] ?? null;
         $minFinalPrice    = $filter['min_price_discount'] ?? null;
         $maxFinalPrice    = $filter['max_price_discount'] ?? null;
+
+        \Log::info('Filter:', ['filter' => $filter]);
 
         if (!empty($search)) {
             $query->where('name', 'like', "%{$search}%")
@@ -75,10 +78,17 @@ class ProductService extends BaseService
                 $categoryQuery->whereIn('category_id', $categories);
             });
         }
+
         if (!empty($brands))
         {
             $query->whereIn('brand_id', $brands);
         }
+
+        if (!empty($genders))
+        {
+            $query->whereIn('gender', $genders);
+        }
+
         if (!empty($tags))
         {
             $query->whereHas('tags', function ($tagQuery) use ($tags)
@@ -132,6 +142,7 @@ class ProductService extends BaseService
             $sortBy = 'product_prices.price';
         }
         if ($sortBy === 'final_price') {
+            \Log::info("Final Price: ", ['sortBy' => $sortBy, 'order' => $sortOrder]);;;
             $query->leftJoin('product_price_histories', function ($join) {
                 $join->on('product_price_histories.product_id', '=', 'products.id')
                      ->where('product_price_histories.is_closed', false);
@@ -140,11 +151,27 @@ class ProductService extends BaseService
             $sortBy = 'product_price_histories.price_discount';
         }
 
+        if ($sortBy ==='id_desc'){
+            $sortBy = 'products.id';
+            $sortOrder = 'desc';
+        }
+
         $query->orderBy($sortBy, $sortOrder);
 
+        \Log::info("Query: ", ['query' => $query->toSql()]);
+
         $products = $query->select('products.*', DB::raw("DATE_FORMAT(products.created_at, '%d-%m-%Y %H:%i') as formatted_created_at"))
-                          ->with(['categories', 'tags', 'latestPrice','prices', 'images', 'variants', 'brand', 'activePriceHistory'])
-                          ->paginate($limit, ['*'], 'page', $page);
+                          ->with([
+                                  'categories',
+                                  'tags',
+                                  'latestPrice',
+                                  'prices',
+                                  'images',
+                                  'featuredImage',
+                                  'variants',
+                                  'brand',
+                                  'activePriceHistory'
+                              ])->paginate($limit, ['*'], 'page', $page);
 
         return [
             'data'         => $products->items(),

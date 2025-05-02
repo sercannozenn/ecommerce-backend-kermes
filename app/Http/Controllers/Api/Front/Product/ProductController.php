@@ -44,4 +44,28 @@ class ProductController extends Controller
                                     ]
                                 ]);
     }
+
+    public function index(Request $request)
+    {
+        $products = $this->productService->getPaginatedProducts(
+            page: $request->input('page', 1),
+            limit: $request->input('limit', 1),
+            filter: $request->query('filter', []),
+            sortBy: $request->input('sortBy', 'id'),
+            sortOrder: $request->input('sortOrder', 'desc')
+        );
+
+        // Fiyatı zenginleştir
+        $data = $this->productService->enrichProductPrices(collect($products['data']));
+
+        return $this->success([
+                                  'data'         => $data,
+                                  'meta' => [
+                                      'current_page' => $products['current_page'],
+                                      'last_page'    => $products['last_page'],
+                                      'total'        => $products['total'],
+                                      'per_page'     => $request->input('limit', 1),
+                                  ],
+                              ]);
+    }
 }
