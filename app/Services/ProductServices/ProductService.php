@@ -75,13 +75,21 @@ class ProductService extends BaseService
         {
             $query->whereHas('categories', function ($categoryQuery) use ($categories)
             {
-                $categoryQuery->whereIn('category_id', $categories);
+                $categoryQuery->whereIn('category_id', $categories)
+                              ->orWhereIn('slug', $categories);
             });
         }
 
         if (!empty($brands))
         {
-            $query->whereIn('brand_id', $brands);
+            $query->where(function ($query) use ($brands){
+                $query->whereHas('brand', function ($brandQuery) use ($brands)
+                {
+                    $brandQuery->whereIn('brand_id', $brands)
+                              ->orWhereIn('slug', $brands);
+                });
+            });
+//            $query->whereIn('brand_id', $brands);
         }
 
         if (!empty($genders))
