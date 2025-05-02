@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\Announcement\AnnouncementController;
 use App\Http\Controllers\Api\Admin\Settings\SettingsController;
 use App\Http\Controllers\Api\Admin\Product\ProductDiscountController;
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Front\Filter\FilterController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -50,5 +51,6 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
 Route::get('/sliders', [\App\Http\Controllers\Api\Front\Slider\SliderController::class, 'index']);
 Route::get('announcements/home', [\App\Http\Controllers\Api\Front\Announcement\AnnouncementController::class, 'getActiveAnnouncementsAndEvents']);
 Route::get('/products/latest', [\App\Http\Controllers\Api\Front\Product\ProductController::class, 'latest']);
+Route::get('/products/filters', [FilterController::class, 'index']);
 Route::get('/brands', [\App\Http\Controllers\Api\Front\Brand\BrandController::class, 'index']);
 Route::get('/categories/{slug}/subcategories', [\App\Http\Controllers\Api\Front\Category\CategoryController::class, 'subcategories']);

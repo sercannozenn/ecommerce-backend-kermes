@@ -79,6 +79,17 @@ class CategoryService
         return $parent->childrenActive;
     }
 
+    public function getGenders(): Collection
+    {
+        $slugs = ['kadin', 'erkek', 'cocuk', 'unisex', 'unisex-cocuk'];
+
+        return $this->model::query()
+                           ->select('id', 'name', 'slug')
+                           ->whereIn('slug', $slugs)
+                           ->where('is_active', true)
+                           ->get();
+    }
+
     public function store(array $data): Category|array
     {
         $category = $this->model::create($data);
@@ -126,7 +137,6 @@ class CategoryService
                            ->select('id', 'name', 'slug', 'parent_category_id')
                            ->where('is_active', true)
                            ->orderBy('name')
-                           ->get()
-                           ->groupBy('parent_category_id');
+                           ->get();
     }
 }
