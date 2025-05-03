@@ -17,7 +17,7 @@ class SettingUpdateRequest extends FormRequest
             'key'     => ['required', 'string', 'unique:settings,key,' . $this->setting->id],
             'value'   => ['nullable', 'string'],
             'logo'    => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
-            'favicon' => ['nullable', 'mimes:ico,png,svg', 'max:1024'],
+            'favicon' => ['nullable', 'mimes:ico,png,svg,jpg', 'max:1024'],
         ];
     }
 }
