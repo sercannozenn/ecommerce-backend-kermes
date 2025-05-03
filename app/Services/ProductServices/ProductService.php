@@ -163,10 +163,11 @@ class ProductService extends BaseService
             $sortBy = 'products.id';
             $sortOrder = 'desc';
         }
+        if ($sortBy === ''){
+            $sortBy = 'products.id';
+        }
 
         $query->orderBy($sortBy, $sortOrder);
-
-        \Log::info("Query: ", ['query' => $query->toSql()]);
 
         $products = $query->select('products.*', DB::raw("DATE_FORMAT(products.created_at, '%d-%m-%Y %H:%i') as formatted_created_at"))
                           ->with([

@@ -48,11 +48,11 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $products = $this->productService->getPaginatedProducts(
-            page: $request->input('page', 1),
-            limit: $request->input('limit', 1),
+            page: $request->query('page', 1),
+            limit: $request->query('limit', 1),
             filter: $request->query('filter', []),
-            sortBy: $request->input('sortBy', 'id'),
-            sortOrder: $request->input('sortOrder', 'desc')
+            sortBy: $request->query('sortBy', 'id'),
+            sortOrder: $request->query('sortOrder', 'desc')
         );
 
         // Fiyatı zenginleştir
