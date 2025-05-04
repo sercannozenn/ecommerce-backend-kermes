@@ -31,7 +31,7 @@ class Product extends Model
         'author'
     ];
 
-    protected $appends = ['final_price'];
+    protected $appends = ['final_price', 'price'];
 
     protected $casts = [
         'gender' => \App\Enums\Gender::class,
@@ -39,6 +39,10 @@ class Product extends Model
     public function getFinalPriceAttribute()
     {
         return $this->activePriceHistory?->price_discount ?? $this->latestPrice?->price_discount ?? $this->latestPrice?->price;
+    }
+    public function getPriceAttribute()
+    {
+        return $this->latestPrice?->price_discount ?? $this->latestPrice?->price;
     }
 
     public function categories(): BelongsToMany

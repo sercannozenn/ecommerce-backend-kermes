@@ -59,6 +59,7 @@ Route::get('/categories/{slug}/subcategories', [\App\Http\Controllers\Api\Front\
 Route::get('/products', [\App\Http\Controllers\Api\Front\Product\ProductController::class, 'index']);
 Route::get('/products/latest', [\App\Http\Controllers\Api\Front\Product\ProductController::class, 'latest']);
 Route::get('/products/filters', [FilterController::class, 'index']);
+Route::get('/products/{slug}', [\App\Http\Controllers\Api\Front\Product\ProductController::class, 'detail']);
 
 Route::get('/settings', [\App\Http\Controllers\Api\Front\Settings\SettingsController::class, 'index']);
 

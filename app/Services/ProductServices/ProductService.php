@@ -195,6 +195,14 @@ class ProductService extends BaseService
         return $this->model->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants', 'sizes'])->findOrFail($id);
     }
 
+    public function getBySlug(string $slug): Product
+    {
+        return $this->model::query()
+                           ->with(['brand', 'categories', 'tags', 'prices', 'images', 'variants', 'sizes', 'activePriceHistory.discount'])
+                           ->where('slug', $slug)
+                           ->firstOrFail();
+    }
+
     public function getByCategoryId(int $categoryId): Collection
     {
         return $this->model::query()

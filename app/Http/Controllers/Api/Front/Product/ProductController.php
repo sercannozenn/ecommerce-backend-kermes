@@ -68,4 +68,11 @@ class ProductController extends Controller
                                   ],
                               ]);
     }
+
+    public function detail(string $slug)
+    {
+        $product = $this->productService->getBySlug($slug);
+
+        return $this->success($product);
+    }
 }
