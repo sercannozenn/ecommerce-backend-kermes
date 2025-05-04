@@ -14,10 +14,12 @@ class AnnouncementService
     public function __construct(protected Announcement $model)
     {
     }
+
     public function getAll(): Collection
     {
         return $this->model->latest()->get();
     }
+
     public function getPaginatedAnnouncements(int $page = 1, int $limit = 10, array $filter = [], string $sortBy = 'id', string $sortOrder = 'desc'): array
     {
         $query = $this->model::query();
@@ -49,13 +51,11 @@ class AnnouncementService
             $query->whereDate('date', '<=', $filter['date_to']);
         }
 
-        if ($sortBy === 'formatted_created_at')
-        {
+        if ($sortBy === 'formatted_created_at') {
             $sortBy = 'created_at';
         }
 
-        if ($sortBy === 'formatted_date')
-        {
+        if ($sortBy === 'formatted_date') {
             $sortBy = 'date';
         }
 
@@ -71,15 +71,18 @@ class AnnouncementService
             'last_page'    => $announcements->lastPage(),
         ];
     }
+
     public function getById(int $id): Announcement
     {
         return $this->model->findOrFail($id);
     }
+
     public function setAnnouncement(Announcement $announcement)
     {
         $this->model = $announcement;
         return $this;
     }
+
     /**
      * @throws Exception
      */
@@ -98,24 +101,20 @@ class AnnouncementService
             throw $e;
         }
     }
+
     /**
      * @throws Exception
      */
     public function update(array $data): Announcement
     {
         DB::beginTransaction();
-        try
-        {
-            if (isset($data['image']) && $data['image'] instanceof UploadedFile)
-            {
-                if ($this->model->image && Storage::disk('public')->exists($this->model->image))
-                {
+        try {
+            if (isset($data['image']) && $data['image'] instanceof UploadedFile) {
+                if ($this->model->image && Storage::disk('public')->exists($this->model->image)) {
                     Storage::disk('public')->delete($this->model->image);
                 }
                 $data['image'] = $data['image']->store('announcements', 'public');
-            }
-            else
-            {
+            } else {
                 // Yeni görsel gönderilmemişse:
                 // Eğer eski görsel varsa onu sil ve image=null olarak güncelle
                 if ($this->model->image && Storage::disk('public')->exists($this->model->image)) {
@@ -126,35 +125,31 @@ class AnnouncementService
             $this->model->update($data);
             DB::commit();
             return $this->model;
-        }
-        catch (Exception $e)
-        {
+        } catch (Exception $e) {
             DB::rollBack();
             throw $e;
         }
     }
+
     /**
      * @throws Exception
      */
     public function delete(): ?bool
     {
         DB::beginTransaction();
-        try
-        {
-            if ($this->model->image && Storage::disk('public')->exists($this->model->image))
-            {
+        try {
+            if ($this->model->image && Storage::disk('public')->exists($this->model->image)) {
                 Storage::disk('public')->delete($this->model->image);
             }
             $result = $this->model->delete();
             DB::commit();
             return $result;
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
     }
+
     public function changeStatus(): Announcement
     {
         $this->model->update([
@@ -164,20 +159,25 @@ class AnnouncementService
         return $this->model;
     }
 
-    public function getActiveAnnouncementsAndEvents(int $limit = 2, int $offset = 0): Collection
+    public function getActiveAnnouncementsAndEvents(int $limit = 2, int $offset = 0, $isActive = 1): Collection
     {
         return $this->model::query()
                            ->select('*',
                                     DB::raw("DATE_FORMAT(date, '%d-%m-%Y') as formatted_date")
                            )
-                           ->where('is_active', true)
-                           ->whereDate('date', '>=', now())
+                           ->where(function ($q) use ($isActive)
+                           {
+                               if ($isActive == 1 || $isActive == 0) {
+                                   $q->where('is_active', $isActive)
+                                     ->whereDate('date', '>=', now());
+                               }
+                           })
+
                            ->orderBy('date', 'DESC')
                            ->offset($offset)
                            ->limit($limit)
                            ->get();
     }
-
 
 
 }

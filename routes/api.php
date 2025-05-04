@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (){
 
 Route::get('/sliders', [\App\Http\Controllers\Api\Front\Slider\SliderController::class, 'index']);
 Route::get('announcements/home', [\App\Http\Controllers\Api\Front\Announcement\AnnouncementController::class, 'getActiveAnnouncementsAndEvents']);
+Route::get('announcements/{id}', [\App\Http\Controllers\Api\Front\Announcement\AnnouncementController::class, 'detail']);
 
 Route::get('/brands', [\App\Http\Controllers\Api\Front\Brand\BrandController::class, 'index']);
 Route::get('/categories/{slug}/subcategories', [\App\Http\Controllers\Api\Front\Category\CategoryController::class, 'subcategories']);

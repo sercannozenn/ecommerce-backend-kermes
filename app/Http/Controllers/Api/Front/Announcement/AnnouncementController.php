@@ -22,9 +22,21 @@ class AnnouncementController extends Controller
     {
         $limit = $request->get('limit', 2);
         $offset = $request->get('offset', 0);
+        $is_Active = $request->get('is_active', 1);
 
-        $items = $this->announcementService->getActiveAnnouncementsAndEvents($limit, $offset);
+        $items = $this->announcementService->getActiveAnnouncementsAndEvents($limit, $offset, $is_Active);
         return $this->success($items);
     }
+
+    public function detail(int $id)
+    {
+        $announcement = $this->announcementService->getById($id);
+
+//        $announcement->image_url = $announcement->image ? asset('storage/' . $announcement->image) : null;
+        $announcement->formatted_date = $announcement->date ? $announcement->date->format('d-m-Y') : null;
+
+        return $this->success($announcement);
+    }
+
 
 }
