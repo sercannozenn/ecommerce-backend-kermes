@@ -42,7 +42,7 @@ class Product extends Model
     }
     public function getPriceAttribute()
     {
-        return $this->latestPrice?->price_discount ?? $this->latestPrice?->price;
+        return $this->activePriceHistory?->price ??  $this->latestPrice?->price ?? $this->latestPrice?->price_discount;
     }
 
     public function categories(): BelongsToMany

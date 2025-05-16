@@ -36,7 +36,7 @@ class ProductPriceHistoryService
             $basePrice = $price->price_discount > 0 ? $price->price_discount : $price->price;
 
             // Geçerli indirimi hesapla
-            $discounted = $this->discountService->getDiscountedPriceAsFloat($product, $basePrice);
+            $discounted     = number_format($this->discountService->getDiscountedPriceAsFloat($product, $basePrice), '2', '.', '');
             $activeDiscount = $this->discountService->getActiveDiscount($product);
             $discountId     = $activeDiscount?->id;
 
@@ -71,10 +71,12 @@ class ProductPriceHistoryService
 
 
 
-            $userId = Auth::check()
-                ? Auth::id()
-                : -1;
+            $userId = Auth::check() ? Auth::id() : -1;
             // Yeni geçmiş kaydını oluştur
+
+            if ($basePrice === $discounted){
+                $basePrice = $price->price;
+            }
             $history = $this->model::create([
                                                 'product_id'             => $product->id,
                                                 'product_price_id'       => $price->id,

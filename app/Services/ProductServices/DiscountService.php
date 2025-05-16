@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -265,6 +266,7 @@ class DiscountService
                 && (float)$last->price_discount === (float)$newDiscounted
             ) {
                 // Aynı discount_id, price ve price_discount ise atla
+                Log::info('Aynı discount_id, price ve price_discount ise atla: ');
                 continue;
             }
 
@@ -352,7 +354,9 @@ class DiscountService
      */
     public function changeStatus(): array
     {
-        // 1) Toggle durumu (aktif <-> pasif)
+        DB::beginTransaction();
+        try{
+            // 1) Toggle durumu (aktif <-> pasif)
         $newStatus = !($this->model->is_active);
         // -----------------------------
         // 2) Aktifleniyorsa: çakışma ve tarih kontrolleri
@@ -413,10 +417,17 @@ class DiscountService
             $historyService->revertDiscount($this->model, "İndirimin durumu değiştirildi. İndirim Adı: " . $this->model->name . ', Yeni İndirim Durumu: Pasif');
         }
 
+        DB::commit();
+
         return [
             'discount' => $this->model,
             'message' => $this->message
         ];
+        }
+        catch (\Exception $exception){
+            DB::rollBack();
+            throw $exception;
+        }
     }
 
     public function getAffectedProducts(ProductDiscount $discount): \Illuminate\Support\Collection
